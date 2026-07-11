@@ -1,0 +1,16 @@
+[project]
+name = "oljwatcher"
+version = "0.1.0"
+description = "24/7 OnlineJobs.ph posting watcher with Telegram alerts and application drafts."
+requires-python = ">=3.10"
+dependencies = [
+  "beautifulsoup4>=4.12.3",
+  "python-dotenv>=1.0.1",
+  "requests>=2.32.3",
+]
+
+[project.scripts]
+oljwatcher = "oljwatcher.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]

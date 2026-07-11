@@ -1,0 +1,17 @@
+[Unit]
+Description=OnlineJobs.ph Telegram watcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/oljwatcher
+EnvironmentFile=/opt/oljwatcher/.env
+ExecStart=/opt/oljwatcher/.venv/bin/oljwatcher
+Restart=always
+RestartSec=10
+User=oljwatcher
+Group=oljwatcher
+
+[Install]
+WantedBy=multi-user.target
