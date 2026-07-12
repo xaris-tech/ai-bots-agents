@@ -18,6 +18,7 @@ from app.schemas import ExtractedPermit, ComplianceResult
 from app.tools import check_egress_rules, file_document, open_review_task
 
 MODEL = "gemini-flash-latest"
+MIN_EXTRACTION_CONFIDENCE = 0.5
 
 
 # ---------------------------------------------------------------------------
@@ -65,6 +66,38 @@ async def _capture_compliance_result(
     return None  # don't alter what the tool returns to the model
 
 
+async def _gate_on_extraction_confidence(
+    tool: BaseTool, args: dict, tool_context: ToolContext
+) -> dict | None:
+    """Refuse to run the compliance check against low-confidence or absent
+    extraction data. Without this, a document that failed to extract
+    (all-zero/placeholder fields) would be checked as if 0mm and 0 exits
+    were real drawn values — producing a fabricated code violation instead
+    of correctly reporting "no usable document".
+    """
+    if tool.name != "check_egress_rules":
+        return None
+
+    extracted = tool_context.state.get("extracted") or {}
+    confidence = extracted.get("extraction_confidence", 0)
+    if confidence < MIN_EXTRACTION_CONFIDENCE:
+        return {
+            "ruleset_version": "n/a",
+            "checks": [{
+                "rule_id": "INTAKE-01",
+                "result": "NEEDS_INFO",
+                "detail": (
+                    f"Extraction confidence {confidence} is below the "
+                    f"{MIN_EXTRACTION_CONFIDENCE} threshold — no document, or "
+                    "an unreadable one, was provided. Not evaluated against "
+                    "egress rules; real field values are required first."
+                ),
+            }],
+            "status": "NEEDS_INFO",
+        }
+    return None
+
+
 compliance_agent = Agent(
     name="compliance_agent",
     model=MODEL,
@@ -78,6 +111,7 @@ restate the result yourself — the tool's output is authoritative. After
 calling it, reply with one sentence summarizing the status for the log.
 """,
     tools=[FunctionTool(func=check_egress_rules)],
+    before_tool_callback=_gate_on_extraction_confidence,
     after_tool_callback=_capture_compliance_result,
 )
 
