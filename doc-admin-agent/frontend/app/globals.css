@@ -1,0 +1,75 @@
+@import "tailwindcss";
+@import "@copilotkit/react-ui/styles.css";
+
+:root {
+  --ground: #edefee;
+  --surface: #ffffff;
+  --ink: #1c232b;
+  --ink-dim: #4b5560;
+  --rule: rgba(28, 35, 43, 0.14);
+  --rule-strong: rgba(28, 35, 43, 0.32);
+  --accent: #2b5b84;
+  --accent-line: #6c93ac;
+  --accent-wash: rgba(43, 91, 132, 0.08);
+  --pass: #2f7a54;
+  --fail: #b23a2e;
+  --needs: #a66a16;
+
+  --copilot-kit-primary-color: var(--accent);
+  --copilot-kit-contrast-color: #ffffff;
+  --copilot-kit-background-color: var(--surface);
+  --copilot-kit-secondary-color: var(--surface);
+  --copilot-kit-secondary-contrast-color: var(--ink);
+  --copilot-kit-separator-color: var(--rule);
+  --copilot-kit-muted-color: var(--ink-dim);
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #12181f;
+    --surface: #171e26;
+    --ink: #dce3e8;
+    --ink-dim: #8fa0ac;
+    --rule: rgba(220, 227, 232, 0.14);
+    --rule-strong: rgba(220, 227, 232, 0.3);
+    --accent: #6fa3c7;
+    --accent-line: #3e5a70;
+    --accent-wash: rgba(111, 163, 199, 0.1);
+    --pass: #5fae84;
+    --fail: #e0685a;
+    --needs: #e0ac5a;
+
+    --copilot-kit-contrast-color: #0d1218;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: "Bahnschrift", "Arial Narrow", "Helvetica Neue", sans-serif;
+}
+
+.font-mono-tech {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
