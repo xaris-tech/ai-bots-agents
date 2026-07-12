@@ -1,0 +1,9 @@
+{
+  "_note": "ILLUSTRATIVE ruleset for demo purposes only. Not a real jurisdiction's code. A production version must be authored/reviewed by a licensed building surveyor and re-certified whenever the underlying legislation changes.",
+  "version": "egress_rules_v0-demo",
+  "jurisdiction": "DEMO-JURISDICTION-1",
+  "min_corridor_width_mm": 1000,
+  "exit_count_trigger_distance_m": 20,
+  "max_travel_distance_m": 30,
+  "sprinkler_required_over_storeys": 3
+}
