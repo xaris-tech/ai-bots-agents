@@ -9,6 +9,11 @@ from pydantic import BaseModel, Field
 
 
 class ExtractedPermit(BaseModel):
+    is_document: bool = Field(
+        description="True if the input is an actual permit application or "
+        "floor-plan document. False for greetings, small talk, or anything "
+        "else that isn't a document to process."
+    )
     application_ref: str
     project_name: str
     site_address: str
