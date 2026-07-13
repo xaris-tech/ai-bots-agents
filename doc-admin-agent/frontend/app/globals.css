@@ -2,18 +2,18 @@
 @import "@copilotkit/react-ui/styles.css";
 
 :root {
-  --ground: #edefee;
+  --ground: #f5f3f0;
   --surface: #ffffff;
-  --ink: #1c232b;
-  --ink-dim: #4b5560;
-  --rule: rgba(28, 35, 43, 0.14);
-  --rule-strong: rgba(28, 35, 43, 0.32);
-  --accent: #2b5b84;
-  --accent-line: #6c93ac;
-  --accent-wash: rgba(43, 91, 132, 0.08);
-  --pass: #2f7a54;
+  --ink: #26221d;
+  --ink-dim: #6b6259;
+  --rule: rgba(38, 34, 29, 0.13);
+  --rule-strong: rgba(38, 34, 29, 0.28);
+  --accent: #c1531f;
+  --accent-line: #d98a5e;
+  --accent-wash: rgba(193, 83, 31, 0.08);
+  --pass: #2f7a4f;
   --fail: #b23a2e;
-  --needs: #a66a16;
+  --needs: #b8862a;
 
   --copilot-kit-primary-color: var(--accent);
   --copilot-kit-contrast-color: #ffffff;
@@ -34,20 +34,20 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --ground: #12181f;
-    --surface: #171e26;
-    --ink: #dce3e8;
-    --ink-dim: #8fa0ac;
-    --rule: rgba(220, 227, 232, 0.14);
-    --rule-strong: rgba(220, 227, 232, 0.3);
-    --accent: #6fa3c7;
-    --accent-line: #3e5a70;
-    --accent-wash: rgba(111, 163, 199, 0.1);
-    --pass: #5fae84;
+    --ground: #1c1a17;
+    --surface: #242019;
+    --ink: #ede8e1;
+    --ink-dim: #a89f92;
+    --rule: rgba(237, 232, 225, 0.13);
+    --rule-strong: rgba(237, 232, 225, 0.28);
+    --accent: #e08249;
+    --accent-line: #7a5136;
+    --accent-wash: rgba(224, 130, 73, 0.12);
+    --pass: #5aab7e;
     --fail: #e0685a;
-    --needs: #e0ac5a;
+    --needs: #d9a04a;
 
-    --copilot-kit-contrast-color: #0d1218;
+    --copilot-kit-contrast-color: #1c1a17;
   }
 }
 
