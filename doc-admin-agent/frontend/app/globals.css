@@ -32,23 +32,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ground: #1c1a17;
-    --surface: #242019;
-    --ink: #ede8e1;
-    --ink-dim: #a89f92;
-    --rule: rgba(237, 232, 225, 0.13);
-    --rule-strong: rgba(237, 232, 225, 0.28);
-    --accent: #e08249;
-    --accent-line: #7a5136;
-    --accent-wash: rgba(224, 130, 73, 0.12);
-    --pass: #5aab7e;
-    --fail: #e0685a;
-    --needs: #d9a04a;
-
-    --copilot-kit-contrast-color: #1c1a17;
-  }
+/* Always light/white — no dark-mode override. User preference: white
+   background regardless of OS color-scheme setting. */
+:root {
+  color-scheme: light;
 }
 
 * {
