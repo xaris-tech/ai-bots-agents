@@ -1,0 +1,107 @@
+{
+  "eval_set_id": "permit_intake",
+  "name": "Permit Intake — Core Behaviors",
+  "description": "Covers the behaviors that matter for this agent: correct PASS/FAIL/NEEDS_INFO routing, the confidence/is_document gate, and that filing is never invoked without a PASS.",
+  "eval_cases": [
+    {
+      "eval_id": "greeting_no_document",
+      "conversation": [
+        {
+          "invocation_id": "inv_1",
+          "user_content": { "parts": [{ "text": "hi" }] },
+          "final_response": {
+            "role": "model",
+            "parts": [{ "text": "Hello! I'm a construction permit compliance agent — send me a permit application or floor-plan document and I'll check it for egress/fire-safety compliance." }]
+          },
+          "intermediate_data": {
+            "tool_uses": []
+          }
+        }
+      ],
+      "session_input": { "app_name": "app", "user_id": "eval_user", "state": {} }
+    },
+    {
+      "eval_id": "noncompliant_permit_full_fail",
+      "conversation": [
+        {
+          "invocation_id": "inv_1",
+          "user_content": {
+            "parts": [{ "text": "BUILDING PERMIT APPLICATION\nProject: \"Riverside Mixed-Use Development, Block B\"\nApplicant: Meridian Construction Pty Ltd\nSite Address: 142 Riverside Way, Dockside\nApplication Ref: B-2216\nStoreys: 4 (3 residential over 1 commercial)\nOccupancy classification: Class 2 (residential) over Class 6 (retail)\n\n--- EGRESS & FIRE SAFETY DETAILS (as drawn) ---\nMain exit corridor width (Level 1, commercial): 900mm\nNumber of exits from Level 1 commercial tenancy: 1\nTravel distance to nearest exit: 38m\nSprinkler system: Not specified in drawings\n" }]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [{ "text": "Compliance check for B-2216 FAILED (EGR-01, EGR-02, EGR-03; FIRE-01 needs info). Not filed — opened a surveyor-review task instead." }]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              { "name": "check_egress_rules", "args": {} },
+              { "name": "open_review_task", "args": {} }
+            ]
+          }
+        }
+      ],
+      "session_input": { "app_name": "app", "user_id": "eval_user", "state": {} }
+    },
+    {
+      "eval_id": "compliant_permit_pass",
+      "conversation": [
+        {
+          "invocation_id": "inv_1",
+          "user_content": {
+            "parts": [{ "text": "BUILDING PERMIT APPLICATION\nProject: \"Willow Creek Duplex\"\nApplicant: Northgate Builders\nSite Address: 8 Willow Creek Rd, Fernvale\nApplication Ref: D-4410\nStoreys: 2\nOccupancy classification: Class 1a (residential)\n\n--- EGRESS & FIRE SAFETY DETAILS (as drawn) ---\nMain exit corridor width: 1200mm\nNumber of exits: 1\nTravel distance to nearest exit: 15m\nSprinkler system: Wet pipe, per NCC Spec\n" }]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [{ "text": "Compliance check for D-4410 PASSED all egress/fire-safety rules. Filed under /Projects/WillowCreekDuplex/Permits/D-4410/." }]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              { "name": "check_egress_rules", "args": {} },
+              { "name": "file_document", "args": {} }
+            ]
+          }
+        }
+      ],
+      "session_input": { "app_name": "app", "user_id": "eval_user", "state": {} }
+    },
+    {
+      "eval_id": "needs_info_sprinkler_only",
+      "conversation": [
+        {
+          "invocation_id": "inv_1",
+          "user_content": {
+            "parts": [{ "text": "BUILDING PERMIT APPLICATION\nProject: \"Harbourline Apartments\"\nApplicant: Coastal Construction Group\nSite Address: 21 Harbourline Ave, Portside\nApplication Ref: A-7781\nStoreys: 4\nOccupancy classification: Class 2 (residential), mixed use\n\n--- EGRESS & FIRE SAFETY DETAILS (as drawn) ---\nMain exit corridor width: 1200mm\nNumber of exits: 2\nTravel distance to nearest exit: 15m\nSprinkler system: Not specified in drawings\n" }]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [{ "text": "Compliance check for A-7781 returned NEEDS_INFO (FIRE-01: sprinkler system unspecified for a 4-storey mixed-use building). Not filed — opened a surveyor-review task instead." }]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              { "name": "check_egress_rules", "args": {} },
+              { "name": "open_review_task", "args": {} }
+            ]
+          }
+        }
+      ],
+      "session_input": { "app_name": "app", "user_id": "eval_user", "state": {} }
+    },
+    {
+      "eval_id": "unrelated_question_no_document",
+      "conversation": [
+        {
+          "invocation_id": "inv_1",
+          "user_content": { "parts": [{ "text": "What's the capital of France?" }] },
+          "final_response": {
+            "role": "model",
+            "parts": [{ "text": "I'm a construction permit compliance agent, so I can't help with that — but send me a permit application or floor-plan document and I'll check it for egress/fire-safety compliance." }]
+          },
+          "intermediate_data": {
+            "tool_uses": []
+          }
+        }
+      ],
+      "session_input": { "app_name": "app", "user_id": "eval_user", "state": {} }
+    }
+  ]
+}

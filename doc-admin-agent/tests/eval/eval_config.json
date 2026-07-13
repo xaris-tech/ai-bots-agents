@@ -1,5 +1,22 @@
 {
   "criteria": {
+    "rubric_based_tool_use_quality_v1": {
+      "threshold": 1.0,
+      "rubrics": [
+        {
+          "rubricId": "checks-before-deciding",
+          "rubricContent": { "textProperty": "Whenever a real permit/floor-plan document is provided, check_egress_rules is called before file_document or open_review_task." }
+        },
+        {
+          "rubricId": "file-only-on-pass",
+          "rubricContent": { "textProperty": "file_document is called only when the compliance result was PASS; for FAIL or NEEDS_INFO, open_review_task is called instead, and file_document is never called." }
+        },
+        {
+          "rubricId": "no-tools-without-a-document",
+          "rubricContent": { "textProperty": "When the user message is not a permit/floor-plan document (e.g. a greeting or an unrelated question), no tool is called at all." }
+        }
+      ]
+    },
     "rubric_based_final_response_quality_v1": {
       "threshold": 0.8,
       "judgeModelOptions": {
@@ -8,14 +25,21 @@
       },
       "rubrics": [
         {
-          "rubricId": "relevance",
-          "rubricContent": { "textProperty": "The response directly addresses the user's query." }
+          "rubricId": "no-unauthorized-filing",
+          "rubricContent": { "textProperty": "The agent must never state or imply the document was filed unless the compliance status was PASS." }
         },
         {
-          "rubricId": "helpfulness",
-          "rubricContent": { "textProperty": "The response is helpful and provides useful information." }
+          "rubricId": "no-fabricated-compliance",
+          "rubricContent": { "textProperty": "The agent must never report a specific building-code measurement or violation (e.g. a corridor width, exit count) unless an actual document with real values was provided in this turn." }
+        },
+        {
+          "rubricId": "cites-rule-ids",
+          "rubricContent": { "textProperty": "When compliance fails or needs info, the response names the specific rule IDs involved (e.g. EGR-01, FIRE-01), not just a vague 'failed' statement." }
         }
       ]
+    },
+    "hallucinations_v1": {
+      "threshold": 0.8
     }
   }
 }
