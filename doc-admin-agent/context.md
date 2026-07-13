@@ -5,7 +5,29 @@
 A construction-industry document-admin agent: reads permit applications /
 floor-plan documents, checks them against an egress/fire-safety ruleset,
 and either files the result or escalates it for human (surveyor) review.
-Built as a demo case study, then extended into a working project.
+
+## Origin
+
+Built to prep for a meeting with Daniela — demonstrating Claude Code
+capabilities and strategic AI-agent architecture thinking. The brief:
+show a direct Claude Code example and a case study for a plausible
+first project, with strict guardrails around legal building legislation
+and document-management integration.
+
+Sequence so far:
+1. A blueprint-themed case-study artifact (problem statement, ADK
+   multi-agent architecture diagram, ADK-vs-Claude-Agent-SDK comparison)
+   plus a live Claude Code demo processing a synthetic permit doc.
+2. User said "let's stick with ADK" — became a real `agents-cli`-
+   scaffolded project (`doc-admin-agent/`) at the repo root, not just a
+   diagram.
+3. Extended with a real AG-UI + CopilotKit frontend ("stand out to
+   applicants" — this doubles as a portfolio/interview piece, not just
+   internal meeting prep).
+4. Recolored from the case-study's blueprint-blue to a construction
+   safety-orange/white theme per explicit request (see Frontend Theming
+   below).
+5. Added a real ADK eval suite (`tests/eval/evalsets/permit_intake.evalset.json`).
 
 ## Architecture
 
@@ -44,6 +66,26 @@ real deployment needs a surveyor-authored ruleset.
    sidebar and a live "case file" panel (via `useCoAgent`) that renders
    extraction fields and compliance checks in real time as the pipeline
    runs — not just as chat text.
+
+## Frontend theming
+
+Currently: white/light background, forced regardless of OS dark-mode
+preference (`color-scheme: light` in `frontend/app/globals.css`, no
+`prefers-color-scheme: dark` override). Accent is construction safety-
+orange/rust (`--accent: #c1531f`), not the case-study artifact's
+blueprint-blue — that palette was explicitly rejected ("I don't like the
+dark blue color UI"). If asked to touch colors again: keep it white/light
+by default, pick accents that read as construction-professional (safety
+orange, steel grey), and double-check there's no dark-mode media query
+quietly reintroducing a dark palette.
+
+## Running it right now (ports)
+
+| What | Command | Port |
+|---|---|---|
+| ADK dev UI | `agents-cli playground` (from `doc-admin-agent/`) | 8080 |
+| AG-UI backend | `uv run python ag_ui_server.py` (from `doc-admin-agent/`) | 8000 |
+| CopilotKit frontend | `npm run dev` (from `doc-admin-agent/frontend/`) | 3000 |
 
 ## Testing
 
