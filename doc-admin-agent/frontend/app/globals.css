@@ -2,7 +2,7 @@
 @import "@copilotkit/react-ui/styles.css";
 
 :root {
-  --ground: #f5f3f0;
+  --ground: #ffffff;
   --surface: #ffffff;
   --ink: #26221d;
   --ink-dim: #6b6259;
