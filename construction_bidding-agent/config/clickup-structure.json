@@ -1,0 +1,36 @@
+{
+  "workspaceId": "9011646920",
+  "spaceName": "Bids & Opportunities",
+  "folders": [
+    {
+      "name": "Intake",
+      "lists": ["IonWave", "DemandStar", "Bonfire"]
+    },
+    {
+      "name": "CEO Review",
+      "lists": ["CEO Approval Queue"]
+    },
+    {
+      "name": "Active Pursuits",
+      "lists": ["Approved Pursuits"]
+    },
+    {
+      "name": "Submitted Bids",
+      "lists": ["Submitted"]
+    },
+    {
+      "name": "Rejected / Archived",
+      "lists": ["Rejected Archive"]
+    }
+  ],
+  "statuses": [
+    "New",
+    "Needs Review",
+    "CEO Review",
+    "Approved",
+    "Rejected",
+    "Pursuing",
+    "Submitted",
+    "Closed"
+  ]
+}

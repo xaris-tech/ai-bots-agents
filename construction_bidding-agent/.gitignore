@@ -1,0 +1,16 @@
+node_modules/
+frontend/node_modules/
+frontend/.next/
+.env
+.env.local
+.mcp.json
+playwright/.auth/
+config/service-account.json
+credentials/
+data/raw/*
+data/out/*
+data/*.db
+!data/raw/.gitkeep
+!data/out/.gitkeep
+.cortex-chrome/
+.playwright-cli/

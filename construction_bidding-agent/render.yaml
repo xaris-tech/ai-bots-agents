@@ -1,0 +1,71 @@
+services:
+  - type: web
+    name: cortex-bid-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    plan: starter
+    region: oregon
+    healthCheckPath: /api/health
+    disk:
+      name: cortex-bid-data
+      mountPath: /code/data
+      sizeGB: 1
+    envVars:
+      # --- App wiring: relocate anything file-backed onto the persistent disk ---
+      - key: BID_DATABASE_PATH
+        value: /code/data/bid-copilot.db
+      - key: PLAYWRIGHT_SITE_USER_DATA_DIR
+        value: /code/data/playwright/cortex-sites
+      - key: PLAYWRIGHT_USER_DATA_DIR
+        value: /code/data/playwright/cortex-portals
+      - key: HEADLESS
+        value: "1"
+
+      # --- CORS: set to your deployed Vercel frontend URL(s), comma-separated ---
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+      # --- Auth (Firebase passwordless) ---
+      - key: AUTH_ENABLED
+        value: "true"
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: AUTH_ALLOWED_EMAILS
+        sync: false
+
+      # --- Gemini chat ---
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_GENAI_USE_VERTEXAI
+        value: "FALSE"
+
+      # --- Portal scraper credentials ---
+      - key: IONWAVE_USERNAME
+        sync: false
+      - key: IONWAVE_PASSWORD
+        sync: false
+      - key: DEMANDSTAR_USERNAME
+        sync: false
+      - key: DEMANDSTAR_PASSWORD
+        sync: false
+      - key: BONFIRE_USERNAME
+        sync: false
+      - key: BONFIRE_PASSWORD
+        sync: false
+      - key: PUBLIC_PURCHASE_USERNAME
+        sync: false
+      - key: PUBLIC_PURCHASE_PASSWORD
+        sync: false
+      - key: BIDNET_USERNAME
+        sync: false
+      - key: BIDNET_PASSWORD
+        sync: false
+
+      # --- Google Sheets / ClickUp sync (optional; leave unset to skip) ---
+      - key: GOOGLE_SERVICE_ACCOUNT_KEY_FILE
+        sync: false
+      - key: CLICKUP_API_TOKEN
+        sync: false
+      - key: CLICKUP_WORKSPACE_ID
+        sync: false

@@ -1,0 +1,59 @@
+{
+  "fields": [
+    {
+      "name": "Source Platform",
+      "type": "dropdown",
+      "options": ["IonWave", "DemandStar", "Bonfire"]
+    },
+    {
+      "name": "Category",
+      "type": "dropdown",
+      "options": ["Aggregates", "Construction", "Other"]
+    },
+    {
+      "name": "Agency / Buyer",
+      "type": "text"
+    },
+    {
+      "name": "Project Name",
+      "type": "text"
+    },
+    {
+      "name": "Location",
+      "type": "text"
+    },
+    {
+      "name": "Due Date",
+      "type": "date"
+    },
+    {
+      "name": "Bid URL",
+      "type": "url"
+    },
+    {
+      "name": "Documents URL / Drive Folder",
+      "type": "url"
+    },
+    {
+      "name": "Estimated Value",
+      "type": "currency"
+    },
+    {
+      "name": "Fit Score",
+      "type": "number"
+    },
+    {
+      "name": "CEO Decision",
+      "type": "dropdown",
+      "options": ["Pending", "Approved", "Rejected"]
+    },
+    {
+      "name": "Reject Reason",
+      "type": "text"
+    },
+    {
+      "name": "Last Checked At",
+      "type": "date"
+    }
+  ]
+}

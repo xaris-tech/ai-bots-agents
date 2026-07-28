@@ -1,0 +1,13 @@
+.git
+.venv
+node_modules
+frontend
+data
+playwright/.auth
+credentials
+tests
+docs
+*.md
+!README.md
+.env
+.env.local

@@ -1,0 +1,45 @@
+{
+  "name": "cortex-bid-automation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/validate-config.mjs",
+    "test:scrapers": "node --test tests/js/*.test.mjs",
+    "score:sample": "node scripts/score-sample.mjs",
+    "auth:portals": "node scripts/open-portals.mjs",
+    "auth:bonfire": "ONLY_PLATFORM=Bonfire node scripts/open-portals.mjs",
+    "login:portals": "node --env-file=.env scripts/login-portals.mjs",
+    "scrape:bids": "node --env-file=.env scripts/scrape-bids.mjs",
+    "scrape:debug": "DEBUG_SCRAPE=1 node --env-file=.env scripts/scrape-bids.mjs",
+    "scrape:ionwave": "DEBUG_SCRAPE=1 ONLY_PLATFORM=IonWave node --env-file=.env scripts/scrape-bids.mjs data/raw/ionwave-bids.json",
+    "scrape:demandstar": "DEBUG_SCRAPE=1 ONLY_PLATFORM=DemandStar node --env-file=.env scripts/scrape-bids.mjs data/raw/demandstar-bids.json",
+    "scrape:bonfire": "DEBUG_SCRAPE=1 ONLY_PLATFORM=Bonfire node --env-file=.env scripts/scrape-bids.mjs data/raw/bonfire-bids.json",
+    "scrape:sites": "node --env-file=.env scripts/scrape-sites.mjs",
+    "scrape:civicengage": "node --env-file=.env scripts/scrape-sites.mjs --platform CivicEngage",
+    "scrape:public-purchase": "node --env-file=.env scripts/scrape-sites.mjs --platform 'Public Purchase'",
+    "scrape:bonfire-sites": "node --env-file=.env scripts/scrape-sites.mjs --platform Bonfire",
+    "scrape:bidnet": "node --env-file=.env scripts/scrape-sites.mjs --platform BidNet",
+    "scrape:ionwave-sites": "node --env-file=.env scripts/scrape-sites.mjs --platform IonWave",
+    "normalize:bids": "node scripts/normalize-bids.mjs",
+    "sheet:metadata": "node --env-file=.env scripts/fetch-sheet-metadata.mjs",
+    "sheet:requests": "node scripts/build-site-tab-requests.mjs && node scripts/build-sheets-update-requests.mjs",
+    "sheet:push": "node --env-file=.env scripts/push-to-google-sheet.mjs",
+    "pipeline:run": "npm run scrape:bids && npm run normalize:bids && npm run sheet:requests && npm run sheet:push",
+    "scrape:real-chrome": "node --env-file=.env scripts/scrape-via-real-chrome.mjs",
+    "scrape:cloudflare": "node --env-file=.env scripts/scrape-cloudflare-sites.mjs",
+    "scrape:bidnet-wide": "node --env-file=.env scripts/scrape-bidnet-wide.mjs",
+    "combine:bids": "node scripts/combine-bids.mjs",
+    "clickup:push": "node --env-file=.env scripts/push-clickup-tasks.mjs",
+    "clickup:push:dry-run": "node --env-file=.env scripts/push-clickup-tasks.mjs --dry-run",
+    "sync:sheet": "npm run scrape:sites && npm run scrape:cloudflare && npm run scrape:bids && npm run combine:bids && npm run normalize:bids && npm run sheet:requests && npm run sheet:push",
+    "sync:clickup": "npm run scrape:sites && npm run scrape:cloudflare && npm run scrape:bids && npm run combine:bids && npm run clickup:push",
+    "sheet:site-tabs": "node --env-file=.env scripts/push-site-tabs.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.0"
+  },
+  "dependencies": {
+    "googleapis": "^173.0.0"
+  }
+}

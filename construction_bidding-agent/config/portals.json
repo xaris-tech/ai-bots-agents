@@ -1,0 +1,46 @@
+{
+  "portals": [
+    {
+      "platform": "IonWave",
+      "url": "https://supplier.ionwave.net",
+      "scrapeUrl": "https://supplier.ionwave.net//VendorResponse/ResponseList.aspx?e=smw3PxSAaTKUz9Ls35~goI~g-U6DiYxW0RFm1fTxIAt991ktbMGWosOKvKGyraJ8",
+      "auth": "browser-session"
+    },
+    {
+      "platform": "DemandStar",
+      "url": "https://www.demandstar.com/app/suppliers/bids",
+      "scrapeUrl": "https://www.demandstar.com/app/suppliers/bids",
+      "auth": "browser-session"
+    },
+    {
+      "platform": "Bonfire",
+      "url": "https://account.bonfirehub.com/login?flow=a08f1461-7c96-47fa-943c-9b1451e2bf92",
+      "discoveryUrl": "https://vendor.bonfirehub.com/agencies/search",
+      "scrapeUrl": "https://vendor.bonfirehub.com/agencies/search",
+      "state": "Texas",
+      "seedAgencies": [
+        { "OrganizationName": "City of Fort Worth", "Domain": "fortworthtexas.bonfirehub.com", "counties": ["Tarrant County"] },
+        { "OrganizationName": "City of Arlington", "Domain": "arlingtontx.bonfirehub.com", "counties": ["Tarrant County"] },
+        { "OrganizationName": "Fort Worth Housing Solutions", "Domain": "fwhs.bonfirehub.com", "counties": ["Tarrant County"] },
+        { "OrganizationName": "City of Dallas", "Domain": "dallascityhall.bonfirehub.com", "counties": ["Dallas County"] },
+        { "OrganizationName": "City of Hutchins", "Domain": "cityofhutchins.bonfirehub.com", "counties": ["Dallas County"] },
+        { "OrganizationName": "Denton County", "Domain": "dentoncounty.bonfirehub.com", "counties": ["Denton County"] },
+        { "OrganizationName": "City of Lewisville", "Domain": "cityoflewisville.bonfirehub.com", "counties": ["Denton County"] },
+        { "OrganizationName": "City of Corinth", "Domain": "cityofcorinth.bonfirehub.com", "counties": ["Denton County"] },
+        { "OrganizationName": "City of Frisco", "Domain": "friscotexas.bonfirehub.com", "counties": ["Denton County"] },
+        { "OrganizationName": "Johnson County", "Domain": "johnsoncountytx.bonfirehub.com", "counties": ["Johnson County"] },
+        { "OrganizationName": "Parker County", "Domain": "parkercountytx.bonfirehub.com", "counties": ["Parker County"] }
+      ],
+      "countyLocalities": {
+        "Tarrant County": ["Tarrant", "Fort Worth", "Arlington", "Bedford", "Benbrook", "Colleyville", "Crowley", "Euless", "Everman", "Grapevine", "Haltom City", "Hurst", "Keller", "Kennedale", "Lake Worth", "Mansfield", "North Richland Hills", "Richland Hills", "Saginaw", "Southlake", "Watauga", "White Settlement", "DFW Airport", "Trinity Metro", "Fort Worth Housing"],
+        "Dallas County": ["Dallas", "Irving", "Garland", "Mesquite", "Richardson", "Carrollton", "Addison", "Balch Springs", "Cedar Hill", "Coppell", "DeSoto", "Duncanville", "Farmers Branch", "Grand Prairie", "Hutchins", "Lancaster", "Rowlett", "Sachse", "Seagoville", "Sunnyvale", "Wilmer", "DFW Airport", "Dallas Area Rapid Transit"],
+        "Denton County": ["Denton", "Lewisville", "Frisco", "Little Elm", "The Colony", "Corinth", "Aubrey", "Sanger", "Justin", "Roanoke", "Flower Mound", "Highland Village", "Lake Dallas", "Pilot Point", "Krum", "Argyle"],
+        "Ellis County": ["Ellis", "Waxahachie", "Ennis", "Midlothian", "Red Oak", "Ferris", "Palmer", "Italy"],
+        "Johnson County": ["Johnson", "Cleburne", "Burleson", "Alvarado", "Joshua", "Keene", "Godley", "Grandview", "Rio Vista"],
+        "Parker County": ["Parker", "Weatherford", "Aledo", "Hudson Oaks", "Willow Park", "Springtown"],
+        "Wise County": ["Wise", "Decatur", "Bridgeport", "Boyd", "Rhome", "Newark", "Paradise", "Chico"]
+      },
+      "auth": "browser-session"
+    }
+  ]
+}
