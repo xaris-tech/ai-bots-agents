@@ -1,34 +1,42 @@
-# Copyright 2026 Google LLC
+# Render deploy target for the FastAPI backend + Node scraping pipeline.
+# Separate from ./Dockerfile (the ADK-scaffolded Cloud Run image, Python-only)
+# because this one also needs Node + Playwright's Chromium to run the scrapers.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# NOT covered here: scripts/scrape-cloudflare-sites.mjs and
+# scripts/scrape-via-real-chrome.mjs. Both drive a real Google Chrome install
+# over CDP to pass Cloudflare's managed challenge — that only works against a
+# real desktop Chrome, not inside a container. Run those locally and let them
+# feed the same database if you need the 7 Cloudflare-walled sites.
 
 FROM python:3.12-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir uv==0.8.13
 
 WORKDIR /code
 
+# --- Python deps ---
 COPY ./pyproject.toml ./README.md ./uv.lock* ./
-
 COPY ./app ./app
-
 RUN uv sync --frozen
+
+# --- Node deps + Playwright browser ---
+COPY ./package.json ./package-lock.json ./
+RUN npm ci
+RUN npx playwright install --with-deps chromium
+
+# --- Scraper pipeline code the FastAPI backend shells out to ---
+COPY ./scripts ./scripts
+COPY ./src ./src
+COPY ./config ./config
 
 ARG COMMIT_SHA=""
 ENV COMMIT_SHA=${COMMIT_SHA}
-
-ARG AGENT_VERSION=0.0.0
-ENV AGENT_VERSION=${AGENT_VERSION}
 
 EXPOSE 8080
 

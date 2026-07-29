@@ -18,9 +18,8 @@ both the client (UX) and the server (the real boundary).
   production deliverability.
 
 **Deploy: NOT done, decided.** Frontend → Vercel. Backend → Render (Docker web
-service via `Dockerfile.render` + `render.yaml`), not Cloud Run — avoids the
-`cortex-bid-desk` Blaze-billing gate entirely and gets a persistent disk out of
-the box. See "Deployment" below.
+service via `Dockerfile` + `render.yaml`), not Cloud Run — avoids the
+`cortex-bid-desk` Blaze-billing gate entirely. See "Deployment" below.
 
 The setup steps below are kept as reference / for rebuilding on another project.
 
@@ -76,16 +75,17 @@ account provisioning needed; any allowlisted email can request a link.
   URL, once known) as Vercel project env vars.
 - **Backend** → **Render**, Docker web service. Not Cloud Run — Cloud Run
   needs `cortex-bid-desk` on Blaze billing (currently Spark/free), and has no
-  native persistent disk (would need Cloud SQL on top). Render gives both a
-  mountable disk and a flat ~$7/mo starter plan with no billing gate.
-  - `Dockerfile.render` (repo root) — separate from `./Dockerfile` (the
-    ADK-scaffolded, Python-only Cloud Run image). Installs Node 20 + Playwright
-    Chromium alongside the Python/uv deps, since the scan feature shells out to
-    `scripts/*.mjs`.
-  - `render.yaml` — Blueprint spec: one web service, a 1GB disk mounted at
-    `/code/data`, health check on `/api/health`, and every required env var
-    listed (`sync: false` ones need values pasted into the Render dashboard,
-    never committed).
+  native persistent disk (would need Cloud SQL on top).
+  - `Dockerfile` (repo root) — installs Node 20 + Playwright Chromium alongside
+    the Python/uv deps, since the scan feature shells out to `scripts/*.mjs`.
+    The old ADK-scaffolded, Python-only Cloud Run image lives at
+    `Dockerfile.adk` now (unused by this deploy target).
+  - `render.yaml` — Blueprint spec: one web service on the free plan, health
+    check on `/api/health`, and every required env var listed (`sync: false`
+    ones need values pasted into the Render dashboard, never committed). No
+    persistent disk on free plan — `BID_DATABASE_PATH` and Playwright profile
+    dirs are ephemeral, wiped on every deploy/restart. Upgrade to `starter` +
+    add a disk block once billing is set up.
   - `BID_DATABASE_PATH`, `PLAYWRIGHT_SITE_USER_DATA_DIR`,
     `PLAYWRIGHT_USER_DATA_DIR` are all repointed at `/code/data/...` in
     `render.yaml` so the SQLite DB and Playwright's persistent browser

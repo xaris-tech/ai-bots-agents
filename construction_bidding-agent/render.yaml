@@ -2,7 +2,7 @@ services:
   - type: web
     name: cortex-bid-backend
     runtime: docker
-    dockerfilePath: ./Dockerfile.render
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: free
     region: oregon
