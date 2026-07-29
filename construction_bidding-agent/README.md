@@ -7,13 +7,14 @@ ADK 2 bid-intake agent and CEO operations dashboard for Cortex Constructions.
 The application combines:
 
 - An ADK 2 `Workflow` that scans IonWave, DemandStar, and Bonfire concurrently.
-- A Gemini bid copilot with typed tools for search, scoring, scans, and action previews.
+- An OpenAI-backed bid copilot with typed tools for search, scoring, scans, and action previews.
 - A FastAPI API backed by SQLite with last-known-good portal protection.
 - A Next.js operator dashboard with bid review, versioned company fit criteria,
   contextual chat, and immutable Google Sheets/ClickUp approval proposals.
 
 Add the missing values from `.env.example` to the existing `.env`. At minimum,
-chat requires `GEMINI_API_KEY`. Portal scans require either saved Playwright
+chat requires `OPENAI_API_KEY` (from platform.openai.com, billed separately
+from a ChatGPT subscription). Portal scans require either saved Playwright
 sessions or portal credentials.
 
 Start the API:

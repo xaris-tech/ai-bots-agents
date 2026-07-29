@@ -48,9 +48,7 @@ AGENT_CARD_URL = A2A_RPC_URL + ".well-known/agent-card.json"
 FEEDBACK_URL = BASE_URL + "/feedback"
 
 HEADERS = {"Content-Type": "application/json"}
-LIVE_MODEL_CONFIGURED = bool(os.getenv("GEMINI_API_KEY")) or os.getenv(
-    "GOOGLE_GENAI_USE_VERTEXAI", "false"
-).lower() == "true"
+LIVE_MODEL_CONFIGURED = bool(os.getenv("OPENAI_API_KEY"))
 
 
 def log_output(pipe: Any, log_func: Any) -> None:
@@ -128,7 +126,7 @@ def server_fixture(request: Any) -> Iterator[subprocess.Popen[str]]:
     yield server_process
 
 
-@pytest.mark.skipif(not LIVE_MODEL_CONFIGURED, reason="Live Gemini credentials are not configured")
+@pytest.mark.skipif(not LIVE_MODEL_CONFIGURED, reason="Live OpenAI credentials are not configured")
 def test_adk_run_sse(server_fixture: subprocess.Popen[str]) -> None:
     """Test the native ADK route (/run_sse) end to end."""
     logger.info("Starting ADK /run_sse test")
@@ -173,7 +171,7 @@ def test_adk_run_sse(server_fixture: subprocess.Popen[str]) -> None:
     assert has_text_content, "Expected at least one event with text content"
 
 
-@pytest.mark.skipif(not LIVE_MODEL_CONFIGURED, reason="Live Gemini credentials are not configured")
+@pytest.mark.skipif(not LIVE_MODEL_CONFIGURED, reason="Live OpenAI credentials are not configured")
 def test_a2a_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
     """Test the A2A route using the JSON-RPC streaming protocol."""
     logger.info("Starting A2A chat stream test")

@@ -3,8 +3,7 @@ from typing import Any
 
 from google.adk.agents import Agent
 from google.adk.apps import App
-from google.adk.models import Gemini
-from google.genai import types
+from google.adk.models.lite_llm import LiteLlm
 
 from app.bid_models import ActionProposalInput, BidInput, ScanRequest
 from app.intake_workflow import execute_intake
@@ -74,10 +73,7 @@ def prepare_external_action(
 
 root_agent = Agent(
     name="bid_copilot",
-    model=Gemini(
-        model="gemini-3.1-flash-lite",
-        retry_options=types.HttpRetryOptions(attempts=3),
-    ),
+    model=LiteLlm(model="openai/gpt-4o-mini"),
     instruction="""
 You are the bid copilot for the CEO of a construction firm. Help the operator
 find, compare, and understand current procurement opportunities. Use tools for

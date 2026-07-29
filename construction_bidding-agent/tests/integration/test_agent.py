@@ -29,10 +29,8 @@ def test_agent_stream() -> None:
     Tests that the agent returns valid streaming responses.
     """
 
-    if not os.getenv("GEMINI_API_KEY") and os.getenv(
-        "GOOGLE_GENAI_USE_VERTEXAI", "false"
-    ).lower() != "true":
-        pytest.skip("Live Gemini credentials are not configured")
+    if not os.getenv("OPENAI_API_KEY"):
+        pytest.skip("Live OpenAI credentials are not configured")
 
     session_service = InMemorySessionService()
 

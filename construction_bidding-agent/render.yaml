@@ -30,11 +30,9 @@ services:
       - key: AUTH_ALLOWED_EMAILS
         sync: false
 
-      # --- Gemini chat ---
-      - key: GEMINI_API_KEY
+      # --- OpenAI chat (bid copilot agent model, via ADK's LiteLLM wrapper) ---
+      - key: OPENAI_API_KEY
         sync: false
-      - key: GOOGLE_GENAI_USE_VERTEXAI
-        value: "FALSE"
 
       # --- Portal scraper credentials ---
       - key: IONWAVE_USERNAME
