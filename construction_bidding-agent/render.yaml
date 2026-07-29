@@ -4,13 +4,9 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile.render
     dockerContext: .
-    plan: starter
+    plan: free
     region: oregon
     healthCheckPath: /api/health
-    disk:
-      name: cortex-bid-data
-      mountPath: /code/data
-      sizeGB: 1
     envVars:
       # --- App wiring: relocate anything file-backed onto the persistent disk ---
       - key: BID_DATABASE_PATH
