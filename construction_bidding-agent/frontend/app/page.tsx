@@ -21,10 +21,13 @@ import {
   Send,
   Settings2,
   SquareKanban,
+  Trash2,
   TriangleAlert,
   X,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { categorizeBid, CATEGORY_LABEL, type BidCategory } from "./categorize";
 import { getIdToken, firebaseEnabled } from "./firebase";
 import { signOutUser } from "./AuthGate";
@@ -221,6 +224,23 @@ function daysUntil(value: string | null) {
   return Math.ceil((new Date(`${value}T23:59:59`).getTime() - Date.now()) / 86_400_000);
 }
 
+type ExpiryFilter = "all" | "7" | "14" | "30" | "expired";
+const EXPIRY_FILTERS: { value: ExpiryFilter; label: string }[] = [
+  { value: "all", label: "Any deadline" },
+  { value: "7", label: "Due in 7 days" },
+  { value: "14", label: "Due in 14 days" },
+  { value: "30", label: "Due in 30 days" },
+  { value: "expired", label: "Closed / expired" },
+];
+
+function matchesExpiry(dueDate: string | null, expiry: ExpiryFilter) {
+  if (expiry === "all") return true;
+  const days = daysUntil(dueDate);
+  if (days === null) return false;
+  if (expiry === "expired") return days < 0;
+  return days >= 0 && days <= Number(expiry);
+}
+
 export default function BidDesk() {
   const [bids, setBids] = useState<Bid[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -229,6 +249,7 @@ export default function BidDesk() {
   const [query, setQuery] = useState("");
   const [platform, setPlatform] = useState("All portals");
   const [category, setCategory] = useState<BidCategory | "all">("all");
+  const [expiry, setExpiry] = useState<ExpiryFilter>("all");
   const [view, setView] = useState<"opportunities" | "approvals" | "sites">("opportunities");
   const [siteMonitor, setSiteMonitor] = useState<SiteMonitor | null>(null);
   const [loadingSites, setLoadingSites] = useState(false);
@@ -237,6 +258,7 @@ export default function BidDesk() {
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
   const [syncingSheet, setSyncingSheet] = useState(false);
   const [syncingClickUp, setSyncingClickUp] = useState(false);
+  const [cleaningUp, setCleaningUp] = useState(false);
   const [error, setError] = useState("");
   const [syncResult, setSyncResult] = useState<SheetSyncSummary | null>(null);
   const [clickUpResult, setClickUpResult] = useState<ClickUpSyncSummary | null>(null);
@@ -305,10 +327,11 @@ export default function BidDesk() {
     return bids.filter((bid) => {
       const platformMatch = platform === "All portals" || bid.platform === platform;
       const categoryMatch = category === "all" || categorizeBid(bid.title, bid.description) === category;
+      const expiryMatch = matchesExpiry(bid.due_date, expiry);
       const text = `${bid.title} ${bid.agency} ${bid.location} ${bid.bid_id}`.toLowerCase();
-      return platformMatch && categoryMatch && (!term || text.includes(term));
+      return platformMatch && categoryMatch && expiryMatch && (!term || text.includes(term));
     });
-  }, [bids, platform, category, query]);
+  }, [bids, platform, category, expiry, query]);
 
   const selected = bids.find((bid) => bid.dedupe_key === selectedKey) ?? filtered[0];
   const highFit = bids.filter((bid) => bid.score.label === "high").length;
@@ -392,6 +415,21 @@ export default function BidDesk() {
       setError(syncError instanceof Error ? syncError.message : "Sheet sync failed");
     } finally {
       setSyncingSheet(false);
+    }
+  }
+
+  async function cleanupExpiredBids() {
+    if (!window.confirm("Permanently delete all bids past their deadline from the dashboard? This can't be undone.")) return;
+    setCleaningUp(true);
+    setError("");
+    try {
+      const result = await api<{ deleted: number }>("/api/bids/cleanup-expired", { method: "POST" });
+      appendLog("Clean up expired", [`Deleted ${result.deleted} expired bid${result.deleted === 1 ? "" : "s"}.`]);
+      await load();
+    } catch (cleanupError) {
+      setError(cleanupError instanceof Error ? cleanupError.message : "Cleanup failed");
+    } finally {
+      setCleaningUp(false);
     }
   }
 
@@ -506,6 +544,15 @@ export default function BidDesk() {
             {syncingClickUp ? "Syncing ClickUp" : "Sync ClickUp"}
           </button>
           <button
+            className="secondary-button"
+            onClick={cleanupExpiredBids}
+            disabled={cleaningUp}
+            title="Permanently delete bids past their deadline from the dashboard's stored data (they're already hidden from this table)"
+          >
+            {cleaningUp ? <LoaderCircle className="spin" size={17} /> : <Trash2 size={17} />}
+            {cleaningUp ? "Cleaning up" : "Clean up expired"}
+          </button>
+          <button
             className="icon-button"
             title="View scan / sync logs"
             onClick={() => logsDialog.current?.showModal()}
@@ -586,6 +633,12 @@ export default function BidDesk() {
                     <option value="other">{CATEGORY_LABEL.other}</option>
                   </select>
                 </div>
+                <div className="filter-control">
+                  <Clock size={16} />
+                  <select value={expiry} onChange={(event) => setExpiry(event.target.value as ExpiryFilter)} aria-label="Filter by deadline">
+                    {EXPIRY_FILTERS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  </select>
+                </div>
                 <span className="result-count">{filtered.length} results</span>
               </div>
 
@@ -658,9 +711,17 @@ export default function BidDesk() {
         </section>
 
         <aside className="chat-pane">
-          <div className="chat-header"><div><Bot size={19} /><span><strong>Bid Copilot</strong><small>Gemini Flash</small></span></div><MessageSquareText size={17} /></div>
+          <div className="chat-header"><div><Bot size={19} /><span><strong>Bid Copilot</strong><small>Claude</small></span></div><MessageSquareText size={17} /></div>
           <div className="messages" aria-live="polite">
-            {messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.text}</div>)}
+            {messages.map((message, index) => (
+              <div key={index} className={`message ${message.role}`}>
+                {message.role === "agent" ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+                ) : (
+                  message.text
+                )}
+              </div>
+            ))}
             {chatting && <div className="message agent typing"><i /><i /><i /></div>}
           </div>
           <form className="chat-form" onSubmit={sendMessage}>
@@ -671,7 +732,11 @@ export default function BidDesk() {
       </div>
 
       <ProfileDialog key={profile?.version ?? 0} dialogRef={profileDialog} profile={profile} onSaved={(saved) => setProfile(saved)} />
-      <dialog ref={proposalDialog} className="modal">
+      <dialog
+        ref={proposalDialog}
+        className="modal"
+        onClick={(e) => { if (e.target === e.currentTarget) proposalDialog.current?.close(); }}
+      >
         {proposal && (
           <div className="modal-body">
             <div className="modal-header"><div><span className="eyebrow">Action proposal #{proposal.id}</span><h2>Review external change</h2></div><button className="icon-button" title="Close" onClick={() => proposalDialog.current?.close()}><X size={18} /></button></div>
@@ -686,7 +751,11 @@ export default function BidDesk() {
           </div>
         )}
       </dialog>
-      <dialog ref={logsDialog} className="modal logs-modal">
+      <dialog
+        ref={logsDialog}
+        className="modal logs-modal"
+        onClick={(e) => { if (e.target === e.currentTarget) logsDialog.current?.close(); }}
+      >
         <div className="modal-body">
           <div className="modal-header">
             <div><span className="eyebrow">Debug</span><h2>Scan &amp; sync logs</h2></div>
@@ -730,7 +799,11 @@ function ProfileDialog({ dialogRef, profile, onSaved }: { dialogRef: React.RefOb
   }
 
   return (
-    <dialog ref={dialogRef} className="modal profile-modal">
+    <dialog
+      ref={dialogRef}
+      className="modal profile-modal"
+      onClick={(e) => { if (e.target === e.currentTarget) dialogRef.current?.close(); }}
+    >
       <form className="modal-body" onSubmit={save}>
         <div className="modal-header"><div><span className="eyebrow">Scoring profile v{draft.version}</span><h2>Company fit criteria</h2></div><button type="button" className="icon-button" title="Close" onClick={() => dialogRef.current?.close()}><X size={18} /></button></div>
         <div className="profile-fields">
@@ -761,6 +834,7 @@ const SITE_FILTERS: { key: SiteStatus | "all"; label: string }[] = [
 function SiteMonitorView({ monitor, loading, onRefresh }: { monitor: SiteMonitor | null; loading: boolean; onRefresh: () => void }) {
   const [statusFilter, setStatusFilter] = useState<SiteStatus | "all">("all");
   const [platformFilter, setPlatformFilter] = useState("All platforms");
+  const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
   const [expanded, setExpanded] = useState<string>("");
 
   const sites = monitor?.sites ?? [];
@@ -768,7 +842,8 @@ function SiteMonitorView({ monitor, loading, onRefresh }: { monitor: SiteMonitor
   const visible = sites.filter((site) => {
     const statusMatch = statusFilter === "all" || site.status === statusFilter;
     const platformMatch = platformFilter === "All platforms" || site.platform === platformFilter;
-    return statusMatch && platformMatch;
+    const expiryMatch = expiryFilter === "all" || site.bids.some((bid) => matchesExpiry(bid.due_date, expiryFilter));
+    return statusMatch && platformMatch && expiryMatch;
   });
 
   if (loading && !monitor) {
@@ -856,6 +931,12 @@ function SiteMonitorView({ monitor, loading, onRefresh }: { monitor: SiteMonitor
             {platforms.map((item) => <option key={item}>{item}</option>)}
           </select>
         </div>
+        <div className="filter-control">
+          <Clock size={16} />
+          <select value={expiryFilter} onChange={(event) => setExpiryFilter(event.target.value as ExpiryFilter)} aria-label="Filter by deadline">
+            {EXPIRY_FILTERS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+        </div>
         <span className="result-count">{visible.length} sites</span>
       </div>
 
@@ -894,13 +975,17 @@ function SiteMonitorView({ monitor, loading, onRefresh }: { monitor: SiteMonitor
                   </div>
                   {site.bids.length > 0 ? (
                     <ul className="site-bid-list">
-                      {site.bids.map((bid, index) => (
-                        <li key={`${bid.bid_id}-${index}`}>
-                          {bid.bid_url ? <a href={bid.bid_url} target="_blank" rel="noreferrer">{bid.title}</a> : <span>{bid.title}</span>}
-                          <small>{bid.bid_id || "no ref"}{bid.due_date && ` - due ${bid.due_date}`}</small>
-                        </li>
-                      ))}
-                      {site.bid_total > site.bids.length && <li className="site-bid-more">+ {site.bid_total - site.bids.length} more</li>}
+                      {site.bids
+                        .filter((bid) => matchesExpiry(bid.due_date, expiryFilter))
+                        .map((bid, index) => (
+                          <li key={`${bid.bid_id}-${index}`}>
+                            {bid.bid_url ? <a href={bid.bid_url} target="_blank" rel="noreferrer">{bid.title}</a> : <span>{bid.title}</span>}
+                            <small>{bid.bid_id || "no ref"}{bid.due_date && ` - due ${bid.due_date}`}</small>
+                          </li>
+                        ))}
+                      {expiryFilter === "all" && site.bid_total > site.bids.length && (
+                        <li className="site-bid-more">+ {site.bid_total - site.bids.length} more</li>
+                      )}
                     </ul>
                   ) : (
                     <p className="site-bid-empty">No scraped bids on record for this site.</p>

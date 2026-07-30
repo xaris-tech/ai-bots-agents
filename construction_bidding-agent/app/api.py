@@ -10,6 +10,7 @@ from app.bid_models import (
     ActionApproval,
     ActionProposalInput,
     BidInput,
+    CleanupSummary,
     ClickUpSyncSummary,
     CompanyProfile,
     ScanProgress,
@@ -61,6 +62,14 @@ def create_bid_router(repository_provider: RepositoryProvider) -> APIRouter:
             results,
             key=lambda item: (-item["score"]["total"], item["due_date"] or "9999"),
         )
+
+    @router.post("/bids/cleanup-expired")
+    def cleanup_expired_bids(
+        repository: Annotated[BidRepository, Depends(get_repository)],
+    ) -> CleanupSummary:
+        """Delete bids whose due_date has passed (already hidden from the
+        table; this just stops the SQLite store growing forever)."""
+        return CleanupSummary(deleted=repository.delete_expired_bids())
 
     @router.get("/profile")
     def get_profile(

@@ -221,6 +221,20 @@ class BidRepository:
         with self._connect() as connection:
             return [dict(row) for row in connection.execute(query, parameters)]
 
+    def delete_expired_bids(self) -> int:
+        """Permanently remove bids whose due_date has passed.
+
+        list_bids() already excludes these from what the dashboard shows, so
+        this is storage hygiene (the bids table otherwise grows forever) —
+        it never changes what's currently visible in the Opportunities tab.
+        """
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM bids WHERE due_date IS NOT NULL AND due_date < ?",
+                (date.today().isoformat(),),
+            )
+            return cursor.rowcount
+
     def latest_portal_run(self, platform: str) -> dict[str, Any]:
         with self._connect() as connection:
             row = connection.execute(

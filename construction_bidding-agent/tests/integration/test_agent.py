@@ -15,49 +15,21 @@
 import os
 
 import pytest
-from google.adk.agents.run_config import RunConfig, StreamingMode
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-from google.genai import types
 
-from app.agent import root_agent
+from app.agent import run_bid_copilot
+
+LIVE_CLAUDE_CONFIGURED = bool(os.getenv("RUN_LIVE_CLAUDE_TESTS"))
 
 
-def test_agent_stream() -> None:
-    """
-    Integration test for the agent stream functionality.
-    Tests that the agent returns valid streaming responses.
-    """
-
-    if not os.getenv("OPENAI_API_KEY"):
-        pytest.skip("Live OpenAI credentials are not configured")
-
-    session_service = InMemorySessionService()
-
-    session = session_service.create_session_sync(user_id="test_user", app_name="test")
-    runner = Runner(agent=root_agent, session_service=session_service, app_name="test")
-
-    message = types.Content(
-        role="user", parts=[types.Part.from_text(text="List the current high-fit bids.")]
+@pytest.mark.skipif(
+    not LIVE_CLAUDE_CONFIGURED,
+    reason="Set RUN_LIVE_CLAUDE_TESTS=1 to run against a live Claude session",
+)
+@pytest.mark.asyncio
+async def test_agent_responds() -> None:
+    """Integration test: the bid copilot returns a non-empty answer and a session id."""
+    message, session_id = await run_bid_copilot(
+        "List the current high-fit bids.", session_id=None
     )
-
-    events = list(
-        runner.run(
-            new_message=message,
-            user_id="test_user",
-            session_id=session.id,
-            run_config=RunConfig(streaming_mode=StreamingMode.SSE),
-        )
-    )
-    assert len(events) > 0, "Expected at least one message"
-
-    has_text_content = False
-    for event in events:
-        if (
-            event.content
-            and event.content.parts
-            and any(part.text for part in event.content.parts)
-        ):
-            has_text_content = True
-            break
-    assert has_text_content, "Expected at least one message with text content"
+    assert message.strip(), "Expected a non-empty response"
+    assert session_id

@@ -5,7 +5,8 @@
 // The bid's category is still recorded in the task description for reference.
 
 import fs from "node:fs";
-import { categorizeBid, scoreBid } from "../src/bids.mjs";
+import crypto from "node:crypto";
+import { categorizeBid, scoreBid, dedupeKey } from "../src/bids.mjs";
 import {
   AGGREGATE_KEYWORDS,
   GENERAL_CONSTRUCTION_KEYWORDS,
@@ -77,17 +78,23 @@ if (dryRun) {
 
 let created = 0;
 let skipped = 0;
-const existingNames = await fetchExistingTaskNames(PROSPECTS.id);
+const { names: existingNames, dedupeTags: existingDedupeTags } = await fetchExistingTasks(PROSPECTS.id);
 console.log(`\n${PROSPECTS.name}: ${existingNames.size} existing tasks`);
 
 for (const bid of matches) {
   const name = taskName(bid);
-  if (existingNames.has(name)) {
+  const tag = dedupeTag(bid);
+  // Name match covers tasks created before the dedupe tag existed; the tag
+  // match is what actually survives an agency string formatted differently
+  // across sources (same bug already fixed for the internal bid dedupe —
+  // see dedupeKey in src/bids.mjs, which this tag is built from).
+  if (existingNames.has(name) || existingDedupeTags.has(tag)) {
     skipped += 1;
     continue;
   }
-  await createTask(PROSPECTS.id, bid);
+  await createTask(PROSPECTS.id, bid, tag);
   existingNames.add(name);
+  existingDedupeTags.add(tag);
   created += 1;
   await delay(300); // stay well under ClickUp's rate limit
 }
@@ -114,8 +121,16 @@ function taskName(bid) {
   return `${bid.title} - ${bid.agency}`;
 }
 
-async function fetchExistingTaskNames(listId) {
+// Same signature as the internal bid dedupe (platform/bidId/title/dueDate,
+// no agency), hashed down to a short tag ClickUp can store on the task.
+function dedupeTag(bid) {
+  const hash = crypto.createHash("sha1").update(dedupeKey(bid)).digest("hex").slice(0, 12);
+  return `dedupe-${hash}`;
+}
+
+async function fetchExistingTasks(listId) {
   const names = new Set();
+  const dedupeTags = new Set();
   let page = 0;
   for (;;) {
     const response = await fetch(
@@ -124,14 +139,19 @@ async function fetchExistingTaskNames(listId) {
     );
     if (!response.ok) throw new Error(`ClickUp task list fetch failed (${response.status}): ${await response.text()}`);
     const payload = await response.json();
-    for (const task of payload.tasks ?? []) names.add(task.name);
+    for (const task of payload.tasks ?? []) {
+      names.add(task.name);
+      for (const tag of task.tags ?? []) {
+        if (tag.name?.startsWith("dedupe-")) dedupeTags.add(tag.name);
+      }
+    }
     if (!payload.tasks || payload.tasks.length < 100) break;
     page += 1;
   }
-  return names;
+  return { names, dedupeTags };
 }
 
-async function createTask(listId, bid) {
+async function createTask(listId, bid, dedupeTagValue) {
   const category = categorizeBid(bid);
   const fitScore = scoreBid({ ...bid, category });
   const dueDateMs = bid.dueDate ? Date.parse(`${bid.dueDate}T00:00:00Z`) : undefined;
@@ -152,7 +172,7 @@ async function createTask(listId, bid) {
       `**CEO Decision:** Pending`,
       `**Last Checked At:** ${bid.scrapedAt || new Date().toISOString()}`
     ].join("\n"),
-    tags: [bid.platform].filter(Boolean),
+    tags: [bid.platform, dedupeTagValue].filter(Boolean),
     priority: fitScore >= 80 ? 2 : fitScore >= 55 ? 3 : 4,
     assignees: [ASSIGNEE_ID]
   };

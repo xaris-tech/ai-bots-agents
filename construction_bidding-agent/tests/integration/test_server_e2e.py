@@ -12,43 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import logging
 import os
 import subprocess
 import sys
 import threading
 import time
-import uuid
 from collections.abc import Iterator
 from typing import Any
 
 import pytest
 import requests
-from a2a.types import (
-    Message,
-    MessageSendParams,
-    Part,
-    Role,
-    SendStreamingMessageRequest,
-    SendStreamingMessageResponse,
-    TextPart,
-)
 from requests.exceptions import RequestException
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 TEST_PORT = "8010"
 BASE_URL = f"http://127.0.0.1:{TEST_PORT}"
-RUN_SSE_URL = BASE_URL + "/run_sse"
-A2A_RPC_URL = BASE_URL + "/a2a/construction_bid_copilot/"
-AGENT_CARD_URL = A2A_RPC_URL + ".well-known/agent-card.json"
+HEALTHZ_URL = BASE_URL + "/healthz"
+CHAT_URL = BASE_URL + "/api/chat"
 FEEDBACK_URL = BASE_URL + "/feedback"
 
 HEADERS = {"Content-Type": "application/json"}
-LIVE_MODEL_CONFIGURED = bool(os.getenv("OPENAI_API_KEY"))
+LIVE_CLAUDE_CONFIGURED = bool(os.getenv("RUN_LIVE_CLAUDE_TESTS"))
 
 
 def log_output(pipe: Any, log_func: Any) -> None:
@@ -80,7 +67,6 @@ def start_server() -> subprocess.Popen[str]:
         env=env,
     )
 
-    # Start threads to log stdout and stderr in real-time
     threading.Thread(
         target=log_output, args=(process.stdout, logger.info), daemon=True
     ).start()
@@ -92,11 +78,11 @@ def start_server() -> subprocess.Popen[str]:
 
 
 def wait_for_server(timeout: int = 90, interval: int = 1) -> bool:
-    """Wait for the server to be ready (agent card requires the lifespan to run)."""
+    """Wait for the server to be ready."""
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
-            response = requests.get(AGENT_CARD_URL, timeout=10)
+            response = requests.get(HEALTHZ_URL, timeout=10)
             if response.status_code == 200:
                 logger.info("Server is ready")
                 return True
@@ -126,106 +112,22 @@ def server_fixture(request: Any) -> Iterator[subprocess.Popen[str]]:
     yield server_process
 
 
-@pytest.mark.skipif(not LIVE_MODEL_CONFIGURED, reason="Live OpenAI credentials are not configured")
-def test_adk_run_sse(server_fixture: subprocess.Popen[str]) -> None:
-    """Test the native ADK route (/run_sse) end to end."""
-    logger.info("Starting ADK /run_sse test")
-    user_id = f"user_{uuid.uuid4()}"
-    session_data = {"state": {"preferred_language": "English", "visit_count": 1}}
-
-    session_response = requests.post(
-        f"{BASE_URL}/apps/app/users/{user_id}/sessions",
-        headers=HEADERS,
-        json=session_data,
-        timeout=60,
-    )
-    assert session_response.status_code == 200
-    session_id = session_response.json()["id"]
-
-    data = {
-        "app_name": "app",
-        "user_id": user_id,
-        "session_id": session_id,
-        "new_message": {"role": "user", "parts": [{"text": "Hi!"}]},
-        "streaming": True,
-    }
+@pytest.mark.skipif(
+    not LIVE_CLAUDE_CONFIGURED,
+    reason="Set RUN_LIVE_CLAUDE_TESTS=1 to run against a live Claude session",
+)
+def test_chat_endpoint(server_fixture: subprocess.Popen[str]) -> None:
+    """Test the /api/chat route end to end."""
     response = requests.post(
-        RUN_SSE_URL, headers=HEADERS, json=data, stream=True, timeout=60
-    )
-    assert response.status_code == 200
-
-    events = []
-    for line in response.iter_lines():
-        if line:
-            line_str = line.decode("utf-8")
-            if line_str.startswith("data: "):
-                events.append(json.loads(line_str[6:]))
-
-    assert events, "No events received from stream"
-    has_text_content = any(
-        (content := event.get("content"))
-        and content.get("parts")
-        and any(part.get("text") for part in content["parts"])
-        for event in events
-    )
-    assert has_text_content, "Expected at least one event with text content"
-
-
-@pytest.mark.skipif(not LIVE_MODEL_CONFIGURED, reason="Live OpenAI credentials are not configured")
-def test_a2a_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
-    """Test the A2A route using the JSON-RPC streaming protocol."""
-    logger.info("Starting A2A chat stream test")
-
-    message = Message(
-        message_id=f"msg-user-{uuid.uuid4()}",
-        role=Role.user,
-        parts=[Part(root=TextPart(text="Hi!"))],
-    )
-    request = SendStreamingMessageRequest(
-        id="test-req-001",
-        params=MessageSendParams(message=message),
-    )
-    response = requests.post(
-        A2A_RPC_URL,
+        CHAT_URL,
         headers=HEADERS,
-        json=request.model_dump(mode="json", exclude_none=True),
-        stream=True,
+        json={"message": "Hi!", "session_id": None},
         timeout=60,
     )
     assert response.status_code == 200
-
-    responses: list[SendStreamingMessageResponse] = []
-    for line in response.iter_lines():
-        if line:
-            line_str = line.decode("utf-8")
-            if line_str.startswith("data: "):
-                responses.append(
-                    SendStreamingMessageResponse.model_validate(
-                        json.loads(line_str[6:])
-                    )
-                )
-
-    assert responses, "No responses received from stream"
-
-    final_responses = [
-        r.root
-        for r in responses
-        if hasattr(r.root, "result")
-        and hasattr(r.root.result, "final")
-        and r.root.result.final is True
-    ]
-    assert final_responses, "No final response received"
-    assert final_responses[-1].result.status.state == "completed"
-
-
-def test_agent_card(server_fixture: subprocess.Popen[str]) -> None:
-    """Test that the A2A agent card is served at the well-known URI."""
-    response = requests.get(AGENT_CARD_URL, timeout=10)
-    assert response.status_code == 200, f"A2A endpoint returned {response.status_code}"
-
-    served_agent_card = response.json()
-    for field in ("name", "description", "skills", "capabilities", "url", "version"):
-        assert field in served_agent_card, f"Missing field in agent card: {field}"
+    body = response.json()
+    assert body["message"].strip()
+    assert body["session_id"]
 
 
 def test_collect_feedback(server_fixture: subprocess.Popen[str]) -> None:

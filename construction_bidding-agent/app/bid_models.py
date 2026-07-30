@@ -158,3 +158,7 @@ class ClickUpSyncSummary(BaseModel):
     general_construction_list_url: str = ""
     error: str = ""
     logs: list[str] = Field(default_factory=list)
+
+
+class CleanupSummary(BaseModel):
+    deleted: int

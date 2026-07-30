@@ -6,7 +6,14 @@ services:
     dockerContext: .
     plan: free
     region: oregon
-    healthCheckPath: /api/health
+    # Monorepo: this service's code lives in construction_bidding-agent/.
+    # rootDir makes Render treat that subdir as the build root (Dockerfile,
+    # dockerContext, etc. are all relative to it).
+    rootDir: construction_bidding-agent
+    # /healthz is the ONLY unauthenticated route. /api/* (incl. /api/health)
+    # sits behind require_auth, so an unauthenticated Render probe there 401s
+    # and the deploy is marked unhealthy. Must be /healthz.
+    healthCheckPath: /healthz
     envVars:
       # --- App wiring: relocate anything file-backed onto the persistent disk ---
       - key: BID_DATABASE_PATH
