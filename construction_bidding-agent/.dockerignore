@@ -3,6 +3,7 @@
 node_modules
 frontend
 data
+!data/bid-copilot.db
 playwright/.auth
 credentials
 tests

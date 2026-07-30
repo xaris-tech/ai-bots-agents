@@ -35,6 +35,13 @@ COPY ./scripts ./scripts
 COPY ./src ./src
 COPY ./config ./config
 
+# --- Seed database (free-plan deploy has no persistent disk / can't scrape).
+# Bakes a snapshot of scraped bids into the image so the dashboard shows data
+# on every fresh container. Read-mostly: session writes (approvals, scans)
+# reset on restart. Contains only public tender data, no credentials. Lands at
+# /code/data/bid-copilot.db, the default BID_DATABASE_PATH. ---
+COPY ./data/bid-copilot.db ./data/bid-copilot.db
+
 ARG COMMIT_SHA=""
 ENV COMMIT_SHA=${COMMIT_SHA}
 
