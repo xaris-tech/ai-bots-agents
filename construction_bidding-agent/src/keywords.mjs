@@ -50,6 +50,16 @@ export const CONSTRUCTION_CONTEXT_KEYWORDS = [
   "repair", "repairs", "rehabilitation", "placement", "demolition", "dredging"
 ];
 
+// Professional-services solicitations often contain broad words such as
+// "construction", "roadway", or "improvements" but do not represent work
+// Cortex self-performs. Keep these as a narrow exclusion layer instead of
+// deleting valid construction keywords and losing real JOC/repair projects.
+export const CLICKUP_EXCLUDE_KEYWORDS = [
+  "construction management", "construction manager", "manager at risk", "cmar",
+  "inspection services", "engineering services", "architectural services",
+  "design services", "consulting services"
+];
+
 export function buildKeywordPattern(keywords) {
   const parts = keywords.map((keyword) => {
     const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -60,4 +70,16 @@ export function buildKeywordPattern(keywords) {
     return keyword.includes(" ") ? escaped : `\\b${escaped}s?\\b`;
   });
   return new RegExp(parts.join("|"), "i");
+}
+
+const aggregatePattern = buildKeywordPattern(AGGREGATE_KEYWORDS);
+const generalConstructionPattern = buildKeywordPattern(GENERAL_CONSTRUCTION_KEYWORDS);
+const clickUpExcludePattern = buildKeywordPattern(CLICKUP_EXCLUDE_KEYWORDS);
+
+export function matchesClickUpKeywords(text) {
+  // Material supply remains eligible even when a description mentions
+  // engineering/design context. Exclusions apply to general-construction-only
+  // matches, where those phrases reliably identify professional services.
+  return aggregatePattern.test(text)
+    || (generalConstructionPattern.test(text) && !clickUpExcludePattern.test(text));
 }

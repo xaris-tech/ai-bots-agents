@@ -75,30 +75,40 @@ export async function loadSiteHook(site, dir = defaultSitesDir) {
 }
 
 export function dedupeBids(items) {
-  const seen = new Set();
-  return items.filter((item) => {
-    // No agency, no bidId, no platform in the key: the same real-world bid
-    // reaches this feed from more than one source, and each source can
-    // format the same bid differently.
-    //   - Agency: "City of Irving" vs "City of Irving, TX".
-    //   - BidId: IonWave's central feed prefixes its own tracking code
-    //     ("RFB - Sealed - Public-26-007") where Keller's own IonWave page
-    //     shows the agency's plain number ("26-007").
-    //   - Platform: a municipality can cross-post the identical bid to a
-    //     syndication network (DemandStar) and its own portal (IonWave) —
-    //     Keller's "2026 Janitorial Services" bid does exactly this.
-    // Title stays in the key (with dueDate) so agencies that reuse the same
-    // short bid-number prefix across unrelated projects (e.g. Copperas
-    // Cove's "Bid No. PW ...") don't collapse into one, and so two
-    // different agencies' bids that happen to close on the same date don't
-    // collide.
-    const key = `${normalizeText(item.title)}|${item.dueDate}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const consolidated = new Map();
+  for (const item of items) {
+    // Platform and bid number deliberately stay out of the key because a
+    // procurement can be cross-posted with different tracking identifiers.
+    // The issuing entity stays in the key to prevent unrelated agencies'
+    // generic titles from false-merging.
+    const key = `${normalizeAgency(item.agency)}|${normalizeText(item.title)}|${item.dueDate || ""}`;
+    const existing = consolidated.get(key);
+    const links = sourceLinks(item);
+    if (!existing) {
+      consolidated.set(key, { ...item, sourceLinks: links });
+      continue;
+    }
+    existing.sourceLinks = [...new Set([...existing.sourceLinks, ...links])];
+  }
+  return [...consolidated.values()];
 }
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeAgency(value) {
+  const primaryName = String(value || "").split(",")[0];
+  return normalizeText(primaryName)
+    .replace(/^(?:city|town|village) of /, "")
+    .replace(/\b(?:texas|tx)$/, "")
+    .trim();
+}
+
+function sourceLinks(item) {
+  return [...new Set([
+    ...(Array.isArray(item.sourceLinks) ? item.sourceLinks : []),
+    item.bidUrl,
+    item.documentsUrl
+  ].filter(Boolean))];
 }

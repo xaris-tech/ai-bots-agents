@@ -32,11 +32,15 @@ export async function scrapeStaticList(page, site) {
   const notices = site.allowTextNotices ? textNotices(body) : [];
 
   const bids = normalizeStaticItems([...rows, ...links, ...notices], site);
-  const warning = bids.length === 0 && !/no (?:open )?bids?|no current|not accepting|no solicitations/i.test(body)
-    ? `${site.agency}: no open solicitations recognized; verify page layout.`
-    : "";
+  const warning = staticListWarning(bids, body, site);
 
   return { platform: "StaticList", sourceId: site.id, bids, warning };
+}
+
+export function staticListWarning(bids, body, site) {
+  return bids.length === 0 && !site.reviewedBlankIsEmpty && !/no (?:open )?bids?|no current|not accepting|no solicitations/i.test(body)
+    ? `${site.agency}: no open solicitations recognized; verify page layout.`
+    : "";
 }
 
 async function collectTableRows(page) {
@@ -71,10 +75,27 @@ async function collectContentLinks(page) {
         if (container.parentElement.innerText.length > 400) break;
         container = container.parentElement;
       }
+      // Dates on ezTask content pages commonly live in the paragraphs directly
+      // after the linked bid title. Pull those siblings into this posting's
+      // context, stopping before another link so separate solicitations never
+      // share a deadline.
+      const contextParts = [container?.innerText || anchor.innerText];
+      let sibling = anchor.closest("p, li, tr")?.nextElementSibling;
+      for (let offset = 0; sibling && offset < 3; offset += 1, sibling = sibling.nextElementSibling) {
+        if (sibling.querySelector?.("a[href]")) break;
+        const siblingText = sibling.innerText?.trim() || "";
+        if (siblingText && contextParts.join("\n").length + siblingText.length < 900) contextParts.push(siblingText);
+      }
       return {
         kind: "link",
         text: anchor.innerText,
-        containerText: container?.innerText || anchor.innerText,
+        containerText: contextParts.join("\n"),
+        // ezTask and similar CMS pages keep years of old bid documents inside
+        // an accordion titled "Closed Bids". The link itself may carry no
+        // closed marker, so preserve the nearest section heading for the
+        // normalizer instead of accidentally treating the archive as open.
+        sectionText: anchor.closest(".accordion-item, details, section")
+          ?.querySelector(".accordion-item-hd, summary, h2, h3, h4")?.innerText || "",
         href: anchor.href
       };
     })
@@ -107,7 +128,7 @@ function textNotices(body) {
 const SOLICITATION_KEYWORDS = /\b(bids?|rfps?|rfqs?|rfcsp|ifb|itb|proposals?|solicitations?|invitations?|notice to bidder|request for (?:proposal|qualification|bid|quote))/i;
 const GENERIC_TITLES = /^(bids?|bid (?:opportunities|postings|information|notices?)|current bids?|open bids?|bid results?|closed bids?|purchasing|solicitations?|view (?:all|details)|read more|learn more|details|download(?: file)?|here|click here)$/i;
 // Boilerplate procurement paperwork that sits next to real postings.
-const BOILERPLATE_TITLES = /^(form\b|residence certification|list of government|vendor (?:registration|application|packet)|w-9\b|conflict of interest|inquiries and responses|how to|instructions|purchasing policy|federal procurement|terms (?:and|&) conditions|bid tabulation|skip (?:navigation|to)|scroll to top|translate\b|search\b)/i;
+const BOILERPLATE_TITLES = /^(form\b|residence certification|list of government|vendor (?:registration|application|packet)|w-9\b|conflict of interest|inquiries and responses|how to|instructions|purchasing (?:policy|terms)|electronic bid submission information|federal procurement|terms (?:and|&) conditions|bid tabulation|skip (?:navigation|to)|scroll to top|translate\b|search\b)/i;
 const CLOSED_MARKERS = /\b(closed|awarded|cancelled|canceled|rejected|expired|tabulation|bid results|past bids)\b/i;
 const DOCUMENT_HREF = /\/upload\/|\/documentcenter\/|\.pdf(?:\?|$)|\.docx?(?:\?|$)|solicitation_details|content\.aspx\?id=|\/document_center\//i;
 // Open-ended solicitations carry no closing date on purpose ("Open Until Filled"
@@ -123,13 +144,16 @@ export function normalizeStaticItems(items, site, scrapedAt = new Date().toISOSt
   for (const item of items) {
     const context = cleanText(item.containerText || item.text);
     const linkText = cleanText(item.text);
+    const sectionText = cleanText(item.sectionText);
     if (!context) continue;
+    if (CLOSED_MARKERS.test(sectionText)) continue;
     // Notice blocks were matched by explicit solicitation patterns already;
     // their titles ("27-01 Groceries and Catering") may lack the keywords.
     if (item.kind !== "notice" && !SOLICITATION_KEYWORDS.test(context)) continue;
 
     let title = pickTitle(item.kind === "link" ? linkText : context);
     if (!title || GENERIC_TITLES.test(title) || BOILERPLATE_TITLES.test(title)) continue;
+    if (/\b(?:questions? (?:and|&) answers?|q\s*\/\s*a'?s?)\b/i.test(title)) continue;
     if (CLOSED_MARKERS.test(title) || /^CLOSED/i.test(context)) continue;
     if (item.kind === "notice" && /^notice (?:of|to) bid(?:ders)?$/i.test(title)) {
       // Bare "NOTICE OF BID" heading — pull the subject from the body text.
@@ -150,7 +174,7 @@ export function normalizeStaticItems(items, site, scrapedAt = new Date().toISOSt
     if (!dueDate && hasAnyDate(context) && !openEnded) continue;
     // Undated postings that name only bygone years ("Road Materials 2021",
     // "School Land-Lease June 2012") are stale leftovers, not open bids.
-    if (!dueDate && !openEnded && isStaleByYear(`${title} ${context.slice(0, 200)}`, scrapedAt)) continue;
+    if (!dueDate && !openEnded && isStalePeriod(`${title} ${context.slice(0, 200)}`, scrapedAt)) continue;
 
     // The same solicitation is often collected twice — once as a table row
     // (title = whole row incl. dates) and once as its content link (title =
@@ -205,10 +229,30 @@ function hasAnyDate(text) {
   return new RegExp(DATE_PATTERN.source).test(text);
 }
 
-function isStaleByYear(text, scrapedAt) {
+function isStalePeriod(text, scrapedAt) {
   const currentYear = Number(scrapedAt.slice(0, 4));
   const years = [...text.matchAll(/\b(20\d{2})\b/g)].map((match) => Number(match[1]));
-  return years.length > 0 && Math.max(...years) < currentYear;
+  if (years.length > 0 && Math.max(...years) < currentYear) return true;
+
+  // Some small-government pages leave closed PDF links titled only with a
+  // month and year ("RFP package - Apr 2026"), without a machine-readable
+  // deadline in the surrounding anchor. Once that month has passed, treating
+  // the document as open creates a permanent false positive.
+  const months = new Map([
+    ["jan", 1], ["january", 1], ["feb", 2], ["february", 2],
+    ["mar", 3], ["march", 3], ["apr", 4], ["april", 4],
+    ["may", 5], ["jun", 6], ["june", 6], ["jul", 7], ["july", 7],
+    ["aug", 8], ["august", 8], ["sep", 9], ["sept", 9], ["september", 9],
+    ["oct", 10], ["october", 10], ["nov", 11], ["november", 11],
+    ["dec", 12], ["december", 12]
+  ]);
+  const currentMonth = Number(scrapedAt.slice(5, 7));
+  for (const match of text.matchAll(/\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+(20\d{2})\b/gi)) {
+    const month = months.get(match[1].toLowerCase().replace(/\.$/, ""));
+    const year = Number(match[2]);
+    if (year < currentYear || (year === currentYear && month < currentMonth)) return true;
+  }
+  return false;
 }
 
 function lastFutureDate(text, scrapedAt) {

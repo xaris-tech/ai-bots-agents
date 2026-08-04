@@ -10,7 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 # No scraping here. Reuses data/raw/bids.json, the combined feed the sheet
 # sync already wrote, then filters it by the client's keyword lists and
-# pushes to the two ClickUp lists (Aggregates Supply, General Construction).
+# pushes to the single consolidated ClickUp Prospects list.
 # Assignment to the default assignee and dedupe-by-name both happen inside
 # push-clickup-tasks.mjs.
 PIPELINE_STEPS: list[list[str]] = [
@@ -81,11 +81,9 @@ async def sync_bids_to_clickup() -> dict[str, Any]:
     return {
         "status": "completed",
         "total_bids": report.get("totalBids", 0),
-        "matched_aggregates": report.get("matched", {}).get("aggregates", 0),
-        "matched_general_construction": report.get("matched", {}).get("generalConstruction", 0),
+        "matched": report.get("matched", 0),
         "created": report.get("created", 0),
         "skipped": report.get("skipped", 0),
-        "aggregates_list_url": report.get("lists", {}).get("aggregates", {}).get("url", ""),
-        "general_construction_list_url": report.get("lists", {}).get("generalConstruction", {}).get("url", ""),
+        "list_url": report.get("list", {}).get("url", ""),
         "logs": logs,
     }

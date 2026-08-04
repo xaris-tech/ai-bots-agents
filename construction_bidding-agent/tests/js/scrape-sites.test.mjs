@@ -5,7 +5,9 @@ import path from "node:path";
 import test from "node:test";
 
 import { scrapeBonfireSite } from "../../src/scrapers/bonfire.mjs";
+import { staticListWarning } from "../../src/scrapers/static-list.mjs";
 import {
+  dedupeBids,
   loadSiteHook,
   resolveSiteAuth,
   resolveSiteHookPath
@@ -142,6 +144,38 @@ test("public and browser-session sites resolve without credentials", () => {
     resolveSiteAuth({ id: "b", platform: "IonWave", auth: "browser-session" }, {}).credentials,
     null
   );
+});
+
+test("cross-source duplicates consolidate and preserve every source link", () => {
+  const result = dedupeBids([
+    {
+      platform: "IonWave", agency: "City of Carrollton, TX", title: "Annual Materials Bid",
+      dueDate: "2026-09-01", bidUrl: "https://ionwave.example/bid/1", documentsUrl: "https://ionwave.example/docs/1"
+    },
+    {
+      platform: "DemandStar", agency: "City of Carrollton", title: "Annual Materials Bid",
+      dueDate: "2026-09-01", bidUrl: "https://demandstar.example/bid/1"
+    }
+  ]);
+  assert.equal(result.length, 1);
+  assert.deepEqual(result[0].sourceLinks, [
+    "https://ionwave.example/bid/1",
+    "https://ionwave.example/docs/1",
+    "https://demandstar.example/bid/1"
+  ]);
+});
+
+test("same title and deadline from distinct agencies do not false-merge", () => {
+  const result = dedupeBids([
+    { agency: "City of Carrollton", title: "Annual Materials Bid", dueDate: "2026-09-01", bidUrl: "https://example.com/1" },
+    { agency: "Parker County", title: "Annual Materials Bid", dueDate: "2026-09-01", bidUrl: "https://example.com/2" }
+  ]);
+  assert.equal(result.length, 2);
+});
+
+test("reviewed blank procurement pages are verified empty without hiding normal parser warnings", () => {
+  assert.equal(staticListWarning([], "Current Solicitations", { agency: "Reviewed", reviewedBlankIsEmpty: true }), "");
+  assert.match(staticListWarning([], "Current Solicitations", { agency: "Unknown" }), /verify page layout/);
 });
 
 test("site hooks load by site id and must export scrape()", async (t) => {
