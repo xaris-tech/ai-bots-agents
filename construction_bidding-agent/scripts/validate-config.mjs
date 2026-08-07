@@ -2,6 +2,7 @@ import fields from "../config/clickup-fields.json" with { type: "json" };
 import structure from "../config/clickup-structure.json" with { type: "json" };
 import portals from "../config/portals.json" with { type: "json" };
 import sites from "../config/sites.json" with { type: "json" };
+import targetEntities from "../config/target-entities.json" with { type: "json" };
 
 const requiredFieldNames = [
   "Source Platform",
@@ -24,6 +25,23 @@ assert(structure.spaceName === "Bids & Opportunities", "spaceName mismatch");
 assert(structure.folders.length === 5, "expected 5 folders");
 assert(portals.portals.length === 3, "expected 3 portals");
 assert(Array.isArray(sites.sites) && sites.sites.length > 0, "expected configured sites");
+assert(targetEntities.spreadsheetId, "target entities need a spreadsheetId");
+assert(targetEntities.tabs?.length === 2, "target entities need exactly two source tabs");
+assert(new Set(targetEntities.tabs.map((tab) => tab.key)).size === 2, "target entity tab keys must be unique");
+for (const tab of targetEntities.tabs) {
+  assert(tab.name && tab.gid && Number.isInteger(tab.nameColumn), `invalid target entity tab: ${tab.key}`);
+}
+const ownershipEntities = new Set();
+for (const record of targetEntities.ownership ?? []) {
+  assert(record.entity && !ownershipEntities.has(record.entity), `duplicate target ownership: ${record.entity}`);
+  ownershipEntities.add(record.entity);
+  assert(["batch-owned", "manual", "blocked"].includes(record.disposition), `invalid ownership disposition: ${record.entity}`);
+  if (record.disposition === "batch-owned") {
+    assert(record.owner, `${record.entity}: batch ownership needs an owner`);
+    assert(record.evidence?.source, `${record.entity}: batch ownership needs an evidence source`);
+    assert(record.evidence?.agencyNames?.length > 0, `${record.entity}: batch ownership needs exact agency names`);
+  }
+}
 
 const siteIds = new Set();
 const siteUrls = new Set();

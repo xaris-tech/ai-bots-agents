@@ -8,10 +8,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import { categorizeBid, scoreBid, dedupeKey } from "../src/bids.mjs";
 import {
-  AGGREGATE_KEYWORDS,
-  GENERAL_CONSTRUCTION_KEYWORDS,
-  CONSTRUCTION_CONTEXT_KEYWORDS,
-  buildKeywordPattern
+  matchesClickUpKeywords
 } from "../src/keywords.mjs";
 
 const CLICKUP_API_TOKEN = process.env.CLICKUP_API_TOKEN;
@@ -22,10 +19,6 @@ const ASSIGNEE_ID = Number(process.env.CLICKUP_DEFAULT_ASSIGNEE_ID || 114218682)
 // Single consolidated board. (The old two-list split, Aggregates Supply
 // 901114103788 / General Construction 901114103789, was merged into Prospects.)
 const PROSPECTS = { id: "901114103788", name: "Prospects" };
-
-const generalConstructionPattern = buildKeywordPattern(GENERAL_CONSTRUCTION_KEYWORDS);
-const aggregatePattern = buildKeywordPattern(AGGREGATE_KEYWORDS);
-const constructionContextPattern = buildKeywordPattern(CONSTRUCTION_CONTEXT_KEYWORDS);
 
 const args = parseArgs(process.argv.slice(2));
 const dryRun = Boolean(args["dry-run"]);
@@ -62,7 +55,7 @@ if (texasOnly && bids.length < allBids.length) {
 const matches = [];
 for (const bid of bids) {
   const text = `${bid.title ?? ""} ${bid.description ?? ""}`;
-  if (aggregatePattern.test(text) || generalConstructionPattern.test(text)) matches.push(bid);
+  if (matchesClickUpKeywords(text)) matches.push(bid);
 }
 
 console.log(`${bids.length} total bids in ${inputPath}`);

@@ -150,15 +150,14 @@ class SheetSyncSummary(BaseModel):
 class ClickUpSyncSummary(BaseModel):
     status: Literal["completed", "failed"]
     total_bids: int = 0
-    matched_aggregates: int = 0
-    matched_general_construction: int = 0
+    matched: int = 0
     created: int = 0
     skipped: int = 0
-    aggregates_list_url: str = ""
-    general_construction_list_url: str = ""
+    list_url: str = ""
     error: str = ""
     logs: list[str] = Field(default_factory=list)
 
 
 class CleanupSummary(BaseModel):
     deleted: int
+    clickup_archived: int = 0
