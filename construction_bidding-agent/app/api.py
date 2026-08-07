@@ -21,6 +21,7 @@ from app.bid_models import (
 from app.clickup_cleanup import ClickUpCleanupError, cleanup_expired_clickup_tasks
 from app.clickup_sync import ClickUpSyncError, sync_bids_to_clickup
 from app.full_scan import get_full_scan_progress, start_full_scan
+from app.gmail_source import scan_gmail_bids
 from app.intake_workflow import execute_intake
 from app.operations_status import build_operations_status
 from app.repository import BidRepository
@@ -95,6 +96,31 @@ def create_bid_router(repository_provider: RepositoryProvider) -> APIRouter:
     @router.post("/scans")
     async def run_scan(request: ScanRequest) -> ScanSummary:
         return await execute_intake(request)
+
+    @router.post("/scans/gmail")
+    async def run_gmail_scan(
+        repository: Annotated[BidRepository, Depends(get_repository)],
+    ) -> ScanSummary:
+        result = await scan_gmail_bids()
+        stored = repository.record_portal_run(result)
+        warning = str(stored["warning"] or "")
+        succeeded = stored["status"] == "success"
+        return ScanSummary(
+            status="completed" if succeeded else "completed_with_warnings",
+            total_records=int(stored["record_count"]),
+            outcomes=[
+                {
+                    "platform": "Gmail",
+                    "status": str(stored["status"]),
+                    "record_count": int(stored["record_count"]),
+                    "warning": warning,
+                }
+            ],
+            logs=[
+                f"Gmail: {stored['status']} ({stored['record_count']} records)"
+                + (f" - {warning}" if warning else "")
+            ],
+        )
 
     @router.post("/scans/full")
     async def run_full_scan() -> ScanProgress:

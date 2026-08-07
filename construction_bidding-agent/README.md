@@ -37,6 +37,37 @@ Open `http://localhost:3000`. The ADK web interface remains available through
 the API server, and the A2A card is served under
 `/a2a/construction_bid_copilot/.well-known/agent-card.json`.
 
+### Gmail bid source
+
+The dashboard can read bid notices from `info.cortexconstruction@gmail.com`.
+For the simplest local setup, enable Google 2-Step Verification, create an App
+Password named `Cortex Bid Desk`, and add it to `.env` (spaces are accepted):
+
+```env
+GMAIL_ACCOUNT=info.cortexconstruction@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+GMAIL_LABEL=Cortex Bids
+```
+
+The IMAP integration opens only the `Cortex Bids` label read-only and fetches
+with `BODY.PEEK[]`, so it does not send, delete, archive, label, or mark
+messages read. Gmail filters are responsible for applying the label to trusted
+bid-notification senders.
+
+OAuth remains available as a fallback. Create an OAuth 2.0 **Desktop app**
+client in Google Cloud Console, download its JSON to
+`credentials/gmail-oauth-client.json`, leave `GMAIL_APP_PASSWORD` empty, then
+authorize the mailbox once:
+
+```bash
+.venv/bin/python scripts/auth-gmail.py
+```
+
+The resulting `credentials/gmail-token.json` is local and gitignored. Restart
+the API, then use **Scan email** for Gmail only or **Scan all sources** to scan
+websites, batch portals, and Gmail together. Gmail access never sends, deletes,
+archives, labels, or marks messages read.
+
 ### Dashboard buttons
 
 - **Scan portals** — runs the ADK workflow over IonWave/DemandStar/Bonfire only

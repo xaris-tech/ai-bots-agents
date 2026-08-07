@@ -21,7 +21,7 @@ def test_bid_api_lists_scored_current_bids(tmp_path) -> None:
                     title="Drainage construction",
                     agency="Tarrant County",
                     location="Texas",
-                    due_date=date(2026, 8, 1),
+                    due_date=date(2099, 8, 1),
                     bid_url="https://example.test/bids/42",
                 )
             ],
@@ -165,3 +165,30 @@ def test_scan_endpoint_runs_workflow(tmp_path, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["total_records"] == 3
+
+
+def test_gmail_scan_endpoint_persists_email_bids(tmp_path, monkeypatch) -> None:
+    repository = BidRepository(tmp_path / "bids.db")
+
+    async def fake_scan_gmail() -> PortalRunInput:
+        return PortalRunInput.success(
+            "Gmail",
+            [
+                BidInput(
+                    platform="Gmail",
+                    bid_id="message-42",
+                    title="County aggregate invitation",
+                )
+            ],
+        )
+
+    monkeypatch.setattr("app.api.scan_gmail_bids", fake_scan_gmail)
+    app = FastAPI()
+    app.include_router(create_bid_router(lambda: repository))
+
+    response = TestClient(app).post("/api/scans/gmail")
+
+    assert response.status_code == 200
+    assert response.json()["total_records"] == 1
+    assert response.json()["outcomes"][0]["platform"] == "Gmail"
+    assert repository.list_bids(platform="Gmail")[0]["bid_id"] == "message-42"

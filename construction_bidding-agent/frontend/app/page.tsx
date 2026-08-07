@@ -14,6 +14,7 @@ import {
   Globe,
   LoaderCircle,
   LogOut,
+  Mail,
   MessageSquareText,
   RefreshCw,
   ScrollText,
@@ -261,6 +262,7 @@ export default function BidDesk() {
   const [loadingOperations, setLoadingOperations] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [scanningEmail, setScanningEmail] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
   const [syncingClickUp, setSyncingClickUp] = useState(false);
   const [cleaningUp, setCleaningUp] = useState(false);
@@ -403,6 +405,25 @@ export default function BidDesk() {
     }
   }
 
+  async function runEmailScan() {
+    setScanningEmail(true);
+    setError("");
+    try {
+      const result = await api<ScanSummary>("/api/scans/gmail", { method: "POST" });
+      appendLog("Scan Gmail", result.logs);
+      const outcome = result.outcomes[0];
+      if (result.status === "completed_with_warnings") {
+        setError(outcome?.warning || "Gmail scan completed with a warning");
+      } else {
+        await load();
+      }
+    } catch (scanError) {
+      setError(scanError instanceof Error ? scanError.message : "Gmail scan failed");
+    } finally {
+      setScanningEmail(false);
+    }
+  }
+
   async function syncClickUp() {
     setSyncingClickUp(true);
     setError("");
@@ -526,15 +547,24 @@ export default function BidDesk() {
           <button
             className="primary-button"
             onClick={runScan}
-            disabled={scanning}
-            title="Scrape every configured site profile and batch portal (81 sites + 3 portals) one at a time, loading each into this table as soon as it's scraped. Takes several minutes."
+            disabled={scanning || scanningEmail}
+            title="Scan every configured website, batch portal, and the authorized Gmail bid inbox. Takes several minutes."
           >
             {scanning ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}
             {scanning
               ? scanProgress
                 ? `Scanning ${scanProgress.completed_units}/${scanProgress.total_units}`
                 : "Starting scan"
-              : "Scan portals"}
+              : "Scan all sources"}
+          </button>
+          <button
+            className="secondary-button"
+            onClick={runEmailScan}
+            disabled={scanningEmail || scanning}
+            title="Read recent bid notices from info.cortexconstruction@gmail.com without changing the mailbox"
+          >
+            {scanningEmail ? <LoaderCircle className="spin" size={17} /> : <Mail size={17} />}
+            {scanningEmail ? "Scanning email" : "Scan email"}
           </button>
           <button
             className="secondary-button"

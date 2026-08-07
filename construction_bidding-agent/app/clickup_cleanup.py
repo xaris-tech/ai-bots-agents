@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+import ssl
 from datetime import UTC, date, datetime, time
 from typing import Any
 
 import aiohttp
+import certifi
 
 
 CLICKUP_API_BASE = "https://api.clickup.com/api/v2"
@@ -13,6 +15,11 @@ PROSPECTS_LIST_ID = "901114103788"
 
 class ClickUpCleanupError(RuntimeError):
     pass
+
+
+def _clickup_ssl_context() -> ssl.SSLContext:
+    """Use a portable CA bundle instead of the host Python certificate store."""
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 def _expired_cutoff_ms(today: date | None = None) -> int:
@@ -45,7 +52,12 @@ async def cleanup_expired_clickup_tasks() -> int:
     timeout = aiohttp.ClientTimeout(total=60)
     tasks: list[dict[str, Any]] = []
 
-    async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
+    connector = aiohttp.TCPConnector(ssl=_clickup_ssl_context())
+    async with aiohttp.ClientSession(
+        headers=headers,
+        timeout=timeout,
+        connector=connector,
+    ) as session:
         page = 0
         while True:
             params = {
