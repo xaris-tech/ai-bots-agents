@@ -48,6 +48,15 @@ EXCLUDED_KEYWORDS = [
     "inspection services", "engineering services", "architectural services",
     "design services", "consulting services",
 ]
+SCOPE_EXCLUDED_KEYWORDS = [
+    "stormwater", "landscaping", "culvert", "resurfacing", "paving",
+    "sewer", "main line", "pump station", "wastewater", "wastwater", "lift",
+    "transmission main", "levee", "flood control", "traffic signal",
+    "widening", "bridge",
+]
+CONSTRUCTION_CONTEXT_KEYWORDS = [
+    "repair", "repairs", "replacement", "rehabilitation", "placement", "demolition", "dredging",
+]
 AGGREGATE_CATEGORY_TERMS = [
     "aggregate", "aggregates", "stone", "gravel", "sand", "asphalt",
     "base material", "riprap",
@@ -84,10 +93,14 @@ def _keyword_pattern(keywords: list[str]) -> re.Pattern[str]:
 GENERAL_PATTERN = _keyword_pattern(GENERAL_KEYWORDS)
 AGGREGATE_PATTERN = _keyword_pattern(AGGREGATE_KEYWORDS)
 EXCLUDED_PATTERN = _keyword_pattern(EXCLUDED_KEYWORDS)
+SCOPE_EXCLUDED_PATTERN = _keyword_pattern(SCOPE_EXCLUDED_KEYWORDS)
+CONSTRUCTION_CONTEXT_PATTERN = _keyword_pattern(CONSTRUCTION_CONTEXT_KEYWORDS)
 
 
 def matches_clickup_keywords(bid: BidInput) -> bool:
     text = f"{bid.title} {bid.description}"
+    if SCOPE_EXCLUDED_PATTERN.search(text):
+        return False
     return bool(
         AGGREGATE_PATTERN.search(text)
         or (GENERAL_PATTERN.search(text) and not EXCLUDED_PATTERN.search(text))
@@ -112,12 +125,14 @@ def dedupe_tag(bid: BidInput) -> str:
 
 
 def _category(bid: BidInput) -> str:
-    text = f"{bid.title} {bid.description}".lower()
-    if any(term in text for term in AGGREGATE_CATEGORY_TERMS):
-        return "Aggregates"
-    if any(term in text for term in CONSTRUCTION_CATEGORY_TERMS):
-        return "Construction"
-    return "Other"
+    return "Aggregates" if _clickup_status(bid) == "aggregates" else "Construction"
+
+
+def _clickup_status(bid: BidInput) -> str:
+    text = f"{bid.title} {bid.description}"
+    is_aggregate = bool(AGGREGATE_PATTERN.search(text))
+    is_construction_context = is_aggregate and bool(CONSTRUCTION_CONTEXT_PATTERN.search(text))
+    return "aggregates" if is_aggregate and not is_construction_context else "construction"
 
 
 def _fit_score(bid: BidInput, today: date | None = None) -> int:
@@ -156,32 +171,48 @@ def _summarize_bid_details(title: str, description: str) -> tuple[str, str]:
     what = heading or " ".join(title.split()).strip() or "N/A"
     scope_parts = [segment for segment in meaningful if segment.rstrip(":").strip() != heading]
     scope = " ".join(scope_parts).strip() or "N/A"
-    if len(scope) > 1000:
-        scope = f"{scope[:999].rstrip()}…"
+    if len(scope) > 2000:
+        scope = f"{scope[:1999].rstrip()}…"
     return what[:200], scope
+
+
+def _format_clickup_description(bid: BidInput) -> str:
+    what, scope = _summarize_bid_details(bid.title, bid.description)
+    title = " ".join(bid.title.split()).strip()
+    heading = f"{what}: " if what != "N/A" and what != title else ""
+    brief = f"{heading}{scope}" if scope != "N/A" else ""
+    return "\n".join(
+        [
+            f"**Source:** {bid.platform or 'N/A'}",
+            f"**Category:** {_category(bid)}",
+            "",
+            f"## {bid.title or 'Untitled project'}",
+            "",
+            brief or "No project description was provided by the source.",
+            "",
+            f"**Location:** {bid.location or 'N/A'}",
+            f"**Due Date:** {bid.due_date.isoformat() if bid.due_date else 'N/A'}",
+            f"**URL:** {_specific_bid_url(bid)}",
+        ]
+    )
+
+
+def _specific_bid_url(bid: BidInput) -> str:
+    listing_pattern = re.compile(
+        r"/(?:sourcingevents\.aspx|bid-postings|bids-proposals|bids)/?(?:\?.*)?$",
+        re.IGNORECASE,
+    )
+    if bid.documents_url and (not bid.bid_url or listing_pattern.search(bid.bid_url)):
+        return bid.documents_url
+    return bid.bid_url or bid.documents_url or "N/A"
 
 
 def _task_payload(bid: BidInput, assignee_id: int) -> dict[str, Any]:
     score = _fit_score(bid)
-    what, scope = _summarize_bid_details(bid.title, bid.description)
     payload: dict[str, Any] = {
         "name": _task_name(bid),
-        "markdown_description": "\n".join(
-            [
-                f"**Source Platform:** {bid.platform}",
-                f"**Category:** {_category(bid)}",
-                f"**Agency / Buyer:** {bid.agency}",
-                f"**Project Name:** {bid.title}",
-                f"**Location:** {bid.location}",
-                f"**Due Date:** {bid.due_date.isoformat() if bid.due_date else 'N/A'}",
-                f"**Bid URL:** {bid.bid_url or 'N/A'}",
-                f"**What the Bid Is About:** {what}",
-                f"**Purpose / Scope:** {scope}",
-                f"**Estimated Value:** {bid.estimated_value}",
-                f"**Fit Score:** {score}",
-                f"**Last Checked At:** {bid.scraped_at or datetime.now(UTC).isoformat()}",
-            ]
-        ),
+        "markdown_description": _format_clickup_description(bid),
+        "status": _clickup_status(bid),
         "tags": [bid.platform, dedupe_tag(bid)],
         "priority": 2 if score >= 80 else 3 if score >= 55 else 4,
         "assignees": [assignee_id],
@@ -245,10 +276,15 @@ class ClickUpClient:
         )
         self._json(response, "task creation")
 
-    def update_task_description(self, task_id: str, description: str) -> None:
+    def update_task_description(
+        self, task_id: str, description: str, status: str | None = None
+    ) -> None:
+        fields = {"markdown_description": description}
+        if status:
+            fields["status"] = status
         response = self.session.put(
             f"{CLICKUP_API_BASE}/task/{task_id}",
-            json={"markdown_description": description},
+            json=fields,
             timeout=self.timeout,
         )
         self._json(response, "task description update")
@@ -297,7 +333,17 @@ def sync_clickup_from_supabase(reader: Any, client: ClickUpClient, *, dry_run: b
                 skipped += 1
                 continue
             if not dry_run:
-                client.update_task_description(task_id, payload["markdown_description"])
+                current_status = str(
+                    (existing_task.get("status") or {}).get("status") or ""
+                ).lower()
+                status = (
+                    payload["status"]
+                    if current_status in {"aggregates", "construction"}
+                    else None
+                )
+                client.update_task_description(
+                    task_id, payload["markdown_description"], status
+                )
             updated += 1
             continue
         if not dry_run:

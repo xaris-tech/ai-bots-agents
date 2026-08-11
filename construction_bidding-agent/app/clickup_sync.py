@@ -83,6 +83,7 @@ async def sync_bids_to_clickup() -> dict[str, Any]:
         "total_bids": report.get("totalBids", 0),
         "matched": report.get("matched", 0),
         "created": report.get("created", 0),
+        "updated": report.get("updated", 0),
         "skipped": report.get("skipped", 0),
         "list_url": report.get("list", {}).get("url", ""),
         "logs": logs,

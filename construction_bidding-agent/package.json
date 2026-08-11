@@ -32,6 +32,7 @@
     "combine:bids": "node scripts/combine-bids.mjs",
     "clickup:push": "node --env-file=.env scripts/push-clickup-tasks.mjs",
     "clickup:push:dry-run": "node --env-file=.env scripts/push-clickup-tasks.mjs --dry-run",
+    "clickup:update-existing": "node --env-file=.env scripts/push-clickup-tasks.mjs --update-existing --update-all-existing --only-existing",
     "scraper:report": "node --env-file=.env scripts/report-scraper-operations.mjs",
     "targets:reconcile": "node scripts/reconcile-target-entities.mjs",
     "targets:verify-batch": "node scripts/verify-batch-ownership.mjs",

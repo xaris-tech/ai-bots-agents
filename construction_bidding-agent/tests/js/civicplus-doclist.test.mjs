@@ -13,6 +13,7 @@ test("keeps solicitation docs, drops budgets and fee schedules", () => {
   ], site);
   assert.equal(bids.length, 2);
   assert.equal(bids[0].title, "Advertisement for Bid");
+  assert.equal(bids[0].bidUrl, "https://www.haslet.org/DocumentCenter/View/5377");
   assert.equal(bids[1].bidId, "RFP 2026-18");
   assert.equal(bids[0].sourceId, "haslet-tx");
 });

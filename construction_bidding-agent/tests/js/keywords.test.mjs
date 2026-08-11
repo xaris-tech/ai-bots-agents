@@ -1,17 +1,24 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { matchesClickUpKeywords } from "../../src/keywords.mjs";
+import { classifyClickUpMatch, matchesClickUpKeywords } from "../../src/keywords.mjs";
+
+test("routes ClickUp matches to the aggregate or construction status", () => {
+  assert.equal(classifyClickUpMatch("Supply of limestone flex base"), "Aggregates");
+  assert.equal(classifyClickUpMatch("Commercial roofing replacement"), "Construction");
+  assert.equal(classifyClickUpMatch("Bridge concrete riprap repairs"), null);
+  assert.equal(classifyClickUpMatch("Accounting software subscription"), null);
+});
 
 test("drops civil infrastructure terms removed from the ClickUp filter", () => {
   const removedTerms = [
     "stormwater", "landscaping", "culvert", "resurfacing", "paving",
-    "sewer", "main line", "pump station", "wastewater", "lift station",
+    "sewer", "main line", "pump station", "wastewater", "wastwater", "lift",
     "transmission main", "levee", "flood control", "traffic signal",
     "widening", "bridge",
   ];
 
   for (const term of removedTerms) {
-    assert.equal(matchesClickUpKeywords(term), false, term);
+    assert.equal(matchesClickUpKeywords(`${term} construction improvements`), false, term);
   }
 });
 
@@ -35,7 +42,6 @@ test("keeps commercial remodel trade terms in the ClickUp filter", () => {
 test("keeps scopes reflected in the active ClickUp Projects list", () => {
   assert.equal(matchesClickUpKeywords("Job Order Contract (JOC) for facilities installation and maintenance"), true);
   assert.equal(matchesClickUpKeywords("Rock and Base Materials - limestone flex base"), true);
-  assert.equal(matchesClickUpKeywords("Bridge concrete riprap and RCP repairs"), true);
   assert.equal(matchesClickUpKeywords("Police station renovation"), true);
 });
 

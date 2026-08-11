@@ -47,7 +47,7 @@ export const AGGREGATE_KEYWORDS = [
 // mention a material (e.g. "Bridge Concrete Riprap and RCP Repairs"), not a
 // material-supply contract — route those to General Construction instead.
 export const CONSTRUCTION_CONTEXT_KEYWORDS = [
-  "repair", "repairs", "rehabilitation", "placement", "demolition", "dredging"
+  "repair", "repairs", "replacement", "rehabilitation", "placement", "demolition", "dredging"
 ];
 
 // Professional-services solicitations often contain broad words such as
@@ -58,6 +58,16 @@ export const CLICKUP_EXCLUDE_KEYWORDS = [
   "construction management", "construction manager", "manager at risk", "cmar",
   "inspection services", "engineering services", "architectural services",
   "design services", "consulting services"
+];
+
+// Client-declined civil-infrastructure scopes. These are hard exclusions:
+// broad eligible words such as "construction", "concrete", or
+// "improvements" must not pull these opportunities back into ClickUp.
+export const CLICKUP_SCOPE_EXCLUDE_KEYWORDS = [
+  "stormwater", "landscaping", "culvert", "resurfacing", "paving",
+  "sewer", "main line", "pump station", "wastewater", "wastwater", "lift",
+  "transmission main", "levee", "flood control", "traffic signal",
+  "widening", "bridge"
 ];
 
 export function buildKeywordPattern(keywords) {
@@ -74,12 +84,24 @@ export function buildKeywordPattern(keywords) {
 
 const aggregatePattern = buildKeywordPattern(AGGREGATE_KEYWORDS);
 const generalConstructionPattern = buildKeywordPattern(GENERAL_CONSTRUCTION_KEYWORDS);
+const constructionContextPattern = buildKeywordPattern(CONSTRUCTION_CONTEXT_KEYWORDS);
 const clickUpExcludePattern = buildKeywordPattern(CLICKUP_EXCLUDE_KEYWORDS);
+const clickUpScopeExcludePattern = buildKeywordPattern(CLICKUP_SCOPE_EXCLUDE_KEYWORDS);
+
+export function classifyClickUpMatch(text) {
+  if (clickUpScopeExcludePattern.test(text)) return null;
+  const isAggregateMaterial = aggregatePattern.test(text);
+  const isConstructionJob = isAggregateMaterial && constructionContextPattern.test(text);
+  if (isAggregateMaterial && !isConstructionJob) return "Aggregates";
+  if (isConstructionJob || (generalConstructionPattern.test(text) && !clickUpExcludePattern.test(text))) {
+    return "Construction";
+  }
+  return null;
+}
 
 export function matchesClickUpKeywords(text) {
   // Material supply remains eligible even when a description mentions
   // engineering/design context. Exclusions apply to general-construction-only
   // matches, where those phrases reliably identify professional services.
-  return aggregatePattern.test(text)
-    || (generalConstructionPattern.test(text) && !clickUpExcludePattern.test(text));
+  return classifyClickUpMatch(text) !== null;
 }

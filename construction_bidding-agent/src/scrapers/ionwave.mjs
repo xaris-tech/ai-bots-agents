@@ -343,7 +343,8 @@ export async function scrapeIonWaveSite(page, site) {
   const rows = await page.locator("table tr").evaluateAll((items) => items.map((row) => ({
     cells: [...row.querySelectorAll("th, td")]
       .map((cell) => cell.innerText.replace(/\s+/g, " ").trim())
-      .filter(Boolean)
+      .filter(Boolean),
+    href: row.querySelector("a[href*='VResponseEvent'], a[href*='SourcingEvent']")?.href || ""
   }))).catch(() => []);
 
   const bids = normalizeIonWaveSiteRows(rows, site);
@@ -383,8 +384,8 @@ export function normalizeIonWaveSiteRows(rows, site, scrapedAt = new Date().toIS
       agency: site.agency,
       location: site.location,
       dueDate,
-      bidUrl: site.url,
-      documentsUrl: site.url,
+      bidUrl: absoluteUrl(row.href, site.url),
+      documentsUrl: absoluteUrl(row.href, site.url),
       estimatedValue: "",
       description: joined,
       scrapedAt

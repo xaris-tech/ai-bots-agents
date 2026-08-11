@@ -40,10 +40,17 @@ const AGGREGATE_KEYWORDS = [
   "asphalt", "caliche",
 ];
 
+const CLICKUP_SCOPE_EXCLUDE_KEYWORDS = [
+  "stormwater", "landscaping", "culvert", "resurfacing", "paving",
+  "sewer", "main line", "pump station", "wastewater", "wastwater", "lift",
+  "transmission main", "levee", "flood control", "traffic signal",
+  "widening", "bridge",
+];
+
 // An aggregate-material bid that ALSO uses one of these repair/install verbs is
 // a construction job that merely mentions a material — General Construction wins.
 const CONSTRUCTION_CONTEXT_KEYWORDS = [
-  "repair", "repairs", "rehabilitation", "placement", "demolition", "dredging",
+  "repair", "repairs", "replacement", "rehabilitation", "placement", "demolition", "dredging",
 ];
 
 function buildKeywordPattern(keywords: string[]): RegExp {
@@ -59,9 +66,11 @@ function buildKeywordPattern(keywords: string[]): RegExp {
 const generalConstructionPattern = buildKeywordPattern(GENERAL_CONSTRUCTION_KEYWORDS);
 const aggregatePattern = buildKeywordPattern(AGGREGATE_KEYWORDS);
 const constructionContextPattern = buildKeywordPattern(CONSTRUCTION_CONTEXT_KEYWORDS);
+const clickUpScopeExcludePattern = buildKeywordPattern(CLICKUP_SCOPE_EXCLUDE_KEYWORDS);
 
 export function categorizeBid(title: string, description = ""): BidCategory {
   const text = `${title ?? ""} ${description ?? ""}`;
+  if (clickUpScopeExcludePattern.test(text)) return "other";
   const isAggregateMaterial = aggregatePattern.test(text);
   const isConstructionJob = isAggregateMaterial && constructionContextPattern.test(text);
   if (isAggregateMaterial && !isConstructionJob) return "aggregates";

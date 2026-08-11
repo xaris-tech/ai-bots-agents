@@ -20,7 +20,10 @@ test("IonWave site rows normalize with header and pager rows removed", () => {
   const bids = normalizeIonWaveSiteRows([
     { cells: ["Bid Number", "Bid Title", "Bid Type", "Bid Issue Date", "Bid Close Date/Time"] },
     { cells: ["1 2 items in 1 pages", "Data pager", "select"] },
-    { cells: ["PWSM26007", "2026 Concrete Panel Replacement", "Bid Posting", "Public Works", "6/29/2026", `${futureUs} 02:00:00 PM (CT)`] },
+    {
+      cells: ["PWSM26007", "2026 Concrete Panel Replacement", "Bid Posting", "Public Works", "6/29/2026", `${futureUs} 02:00:00 PM (CT)`],
+      href: "https://cityofwatauga.ionwave.net/VendorResponse/Bid/VResponseEvent.aspx?e=specific-event"
+    },
     { cells: ["OLD-1", "Expired thing", "Bid Posting", "1/2/2026", "1/9/2026 02:00:00 PM (CT)"] }
   ], ionSite);
 
@@ -28,6 +31,7 @@ test("IonWave site rows normalize with header and pager rows removed", () => {
   assert.equal(bids[0].bidId, "PWSM26007");
   assert.equal(bids[0].sourceId, "watauga-tx");
   assert.equal(bids[0].agency, "City of Watauga, TX");
+  assert.equal(bids[0].bidUrl, "https://cityofwatauga.ionwave.net/VendorResponse/Bid/VResponseEvent.aspx?e=specific-event");
   assert.ok(bids[0].dueDate > new Date().toISOString().slice(0, 10));
 });
 

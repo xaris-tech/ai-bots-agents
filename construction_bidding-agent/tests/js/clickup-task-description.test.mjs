@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { toClickUpTask } from "../../src/bids.mjs";
 
-test("ClickUp task body explains what the bid is for and its scope", () => {
+test("ClickUp task body uses the compact project brief layout", () => {
   const task = toClickUpTask({
     platform: "StaticList",
     title: "Commercial roofing replacement",
@@ -14,12 +14,34 @@ test("ClickUp task body explains what the bid is for and its scope", () => {
     description: "NOTICE OF BID | The Commissioners' Court will be accepting sealed bids for the purchase of the following: | Road Materials: | Not less than 50,000 tons of flex base road material for county road maintenance.",
   });
 
-  assert.match(task.markdown_description, /\*\*Due Date:\*\* N\/A/);
-  assert.match(task.markdown_description, /\*\*Bid URL:\*\* https:\/\/example\.test\/bids\/roofing/);
-  assert.match(task.markdown_description, /\*\*What the Bid Is About:\*\* Road Materials/);
-  assert.match(task.markdown_description, /\*\*Purpose \/ Scope:\*\* Not less than 50,000 tons/);
+  assert.equal(task.markdown_description, [
+    "**Source:** StaticList",
+    "**Category:** Construction",
+    "",
+    "## Commercial roofing replacement",
+    "",
+    "Road Materials: Not less than 50,000 tons of flex base road material for county road maintenance.",
+    "",
+    "**Location:** Callahan County, TX",
+    "**Due Date:** N/A",
+    "**URL:** https://example.test/bids/roofing"
+  ].join("\n"));
   assert.doesNotMatch(task.markdown_description, /Commissioners' Court will be accepting/);
   assert.doesNotMatch(task.markdown_description, /CEO Decision/);
-  assert.doesNotMatch(task.markdown_description, /Documents URL/);
+  assert.doesNotMatch(task.markdown_description, /Agency \/ Buyer|Project Name|Purpose \/ Scope|Documents URL/);
   assert.doesNotMatch(task.markdown_description, /drive\.example\.test/);
+});
+
+test("ClickUp task URL prefers a bid-specific document over a listing page", () => {
+  const task = toClickUpTask({
+    platform: "CivicEngage",
+    title: "Generator installation",
+    location: "Haslet, TX",
+    bidUrl: "https://example.test/BID-POSTINGS",
+    documentsUrl: "https://example.test/DocumentCenter/View/9000/Generator-RFP",
+    description: "Install a standby generator."
+  });
+
+  assert.match(task.markdown_description, /\*\*URL:\*\* https:\/\/example\.test\/DocumentCenter\/View\/9000\/Generator-RFP/);
+  assert.doesNotMatch(task.markdown_description, /\*\*URL:\*\* https:\/\/example\.test\/BID-POSTINGS/);
 });
