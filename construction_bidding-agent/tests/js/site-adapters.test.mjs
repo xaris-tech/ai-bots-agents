@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { normalizeBidNetRows, normalizeBidNetSearchRows } from "../../src/scrapers/bidnet.mjs";
-import { normalizeIonWaveSiteRows } from "../../src/scrapers/ionwave.mjs";
+import {
+  chooseIonWaveDetailDescription,
+  normalizeIonWaveSiteRows,
+} from "../../src/scrapers/ionwave.mjs";
 import { normalizeStaticItems } from "../../src/scrapers/static-list.mjs";
 
 const FUTURE = new Date(Date.now() + 14 * 86400000);
@@ -32,7 +35,19 @@ test("IonWave site rows normalize with header and pager rows removed", () => {
   assert.equal(bids[0].sourceId, "watauga-tx");
   assert.equal(bids[0].agency, "City of Watauga, TX");
   assert.equal(bids[0].bidUrl, "https://cityofwatauga.ionwave.net/VendorResponse/Bid/VResponseEvent.aspx?e=specific-event");
+  assert.equal(bids[0].descriptionQuality, "metadata");
+  assert.equal(bids[0].descriptionSource, "listing-grid");
   assert.ok(bids[0].dueDate > new Date().toISOString().slice(0, 10));
+});
+
+test("prefers the most complete IonWave detail-page description", () => {
+  assert.equal(
+    chooseIonWaveDetailDescription([
+      "Replace the roof.",
+      "Replace the existing roof membrane, wet insulation, flashing, and associated sheet metal at the operations building.",
+    ]),
+    "Replace the existing roof membrane, wet insulation, flashing, and associated sheet metal at the operations building.",
+  );
 });
 
 const bidnetSite = {

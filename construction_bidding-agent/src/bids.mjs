@@ -1,4 +1,5 @@
 import { classifyClickUpMatch } from "./keywords.mjs";
+import { hasUsableDescription } from "./description-quality.mjs";
 
 export const pursuitChecklist = [
   "Review bid documents",
@@ -61,7 +62,10 @@ export function toClickUpTask(bid, now = new Date()) {
 }
 
 export function formatClickUpDescription(bid, category = categorizeBid(bid)) {
-  const details = summarizeBidDetails(bid.title, bid.description);
+  const details = summarizeBidDetails(
+    bid.title,
+    hasUsableDescription(bid) ? bid.description : ""
+  );
   const title = String(bid.title || "").replace(/\s+/g, " ").trim();
   const hasDescriptionHeading = details.what !== "N/A" && details.what !== title;
   const brief = details.scope === "N/A"

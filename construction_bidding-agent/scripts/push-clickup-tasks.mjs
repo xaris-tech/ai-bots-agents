@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { categorizeBid, dedupeKey, formatClickUpDescription, scoreBid } from "../src/bids.mjs";
+import { hasUsableDescription } from "../src/description-quality.mjs";
 import {
   classifyClickUpMatch,
   matchesClickUpKeywords
@@ -205,7 +206,11 @@ async function createTask(listId, bid, dedupeTagValue) {
     name: taskName(bid),
     markdown_description: formatClickUpDescription(bid, category),
     status: category === "Aggregates" ? "aggregates" : "construction",
-    tags: [bid.platform, dedupeTagValue].filter(Boolean),
+    tags: [
+      bid.platform,
+      dedupeTagValue,
+      ...(!hasUsableDescription(bid) ? ["needs-description"] : [])
+    ].filter(Boolean),
     priority: fitScore >= 80 ? 2 : fitScore >= 55 ? 3 : 4,
     assignees: [ASSIGNEE_ID]
   };

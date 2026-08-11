@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { toClickUpTask } from "../../src/bids.mjs";
+import { formatClickUpDescription, toClickUpTask } from "../../src/bids.mjs";
 
 test("ClickUp task body uses the compact project brief layout", () => {
   const task = toClickUpTask({
@@ -44,4 +44,20 @@ test("ClickUp task URL prefers a bid-specific document over a listing page", () 
 
   assert.match(task.markdown_description, /\*\*URL:\*\* https:\/\/example\.test\/DocumentCenter\/View\/9000\/Generator-RFP/);
   assert.doesNotMatch(task.markdown_description, /\*\*URL:\*\* https:\/\/example\.test\/BID-POSTINGS/);
+});
+
+test("ClickUp task does not present listing metadata as a real project brief", () => {
+  const description = formatClickUpDescription({
+    platform: "IonWave",
+    title: "Roof Replacement",
+    agency: "Example City",
+    location: "Example, TX",
+    dueDate: "2026-09-01",
+    bidUrl: "https://example.test/bid",
+    description: "Roof Replacement Example City 8/1/2026 9/1/2026 Issued OPEN",
+    descriptionQuality: "metadata",
+  }, "Construction");
+
+  assert.match(description, /No project description was provided by the source\./);
+  assert.doesNotMatch(description, /Issued OPEN/);
 });

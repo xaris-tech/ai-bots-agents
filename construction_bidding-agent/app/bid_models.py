@@ -23,6 +23,9 @@ class BidInput(BaseModel):
     documents_url: str = ""
     estimated_value: str = ""
     description: str = ""
+    description_quality: Literal["unknown", "missing", "metadata", "summary", "detailed"] = "unknown"
+    description_source: str = ""
+    description_source_url: str = ""
     scraped_at: str = ""
 
 

@@ -1,4 +1,5 @@
 import { ensureLoggedIn, writeDebugSnapshot } from "./common.mjs";
+import { classifyDescriptionQuality, cleanDescription } from "../description-quality.mjs";
 
 const AGENCY_SEARCH_PATTERN = /\/v1\.0\/organizations\/searchByLocation/i;
 
@@ -202,6 +203,25 @@ export function normalizeBonfireProject(project, now = new Date(), agency = {}) 
     : locationsToText(project.Locations || project.locations) || "Texas";
   const domain = agency.domain || organization.Domain || organization.domain;
   const bidUrl = project.ExternalLink || project.externalLink || bonfireProjectUrl(domain, projectId);
+  const sourceDescription = firstDescription([
+    project.Description,
+    project.description,
+    project.ProjectDescription,
+    project.projectDescription,
+    project.ScopeOfWork,
+    project.scopeOfWork,
+    project.Summary,
+    project.summary,
+    project.Notes,
+    project.notes
+  ]);
+  const listingMetadata = [
+    title,
+    agencyName,
+    location,
+    project.DateOpen ? `Open: ${project.DateOpen}` : "",
+    `Due: ${project.DateClose || project.dateClose}`
+  ].filter(Boolean).join(" | ");
 
   return {
     platform: "Bonfire",
@@ -213,15 +233,16 @@ export function normalizeBonfireProject(project, now = new Date(), agency = {}) 
     bidUrl,
     documentsUrl: bidUrl,
     estimatedValue: clean(project.EstimatedValue || project.estimatedValue),
-    description: [
-      title,
-      agencyName,
-      location,
-      project.DateOpen ? `Open: ${project.DateOpen}` : "",
-      `Due: ${project.DateClose || project.dateClose}`
-    ].filter(Boolean).join(" | "),
+    description: sourceDescription || listingMetadata,
+    descriptionQuality: sourceDescription ? classifyDescriptionQuality(sourceDescription) : "metadata",
+    descriptionSource: "listing-api",
+    descriptionSourceUrl: bidUrl,
     scrapedAt: new Date().toISOString()
   };
+}
+
+function firstDescription(values) {
+  return values.map(cleanDescription).find((value) => value.length >= 30) || "";
 }
 
 async function applyStateFilter(page, state) {

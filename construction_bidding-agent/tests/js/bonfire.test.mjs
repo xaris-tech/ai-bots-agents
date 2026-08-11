@@ -34,6 +34,22 @@ test("normalizes an authenticated Bonfire project response", () => {
     bid.bidUrl,
     "https://examplecounty.bonfirehub.com/opportunities/12345"
   );
+  assert.equal(bid.descriptionQuality, "metadata");
+  assert.equal(bid.descriptionSource, "listing-api");
+});
+
+test("uses a Bonfire API description when the portal supplies one", () => {
+  const bid = normalizeBonfireProject(
+    {
+      ...project,
+      Description: "Replace the existing roof membrane and damaged insulation at the municipal service center.",
+    },
+    new Date("2026-07-13T00:00:00Z"),
+  );
+
+  assert.equal(bid.description, "Replace the existing roof membrane and damaged insulation at the municipal service center.");
+  assert.equal(bid.descriptionQuality, "summary");
+  assert.equal(bid.descriptionSource, "listing-api");
 });
 
 test("removes expired projects and deduplicates API pages", () => {

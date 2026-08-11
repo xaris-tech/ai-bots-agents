@@ -17,6 +17,7 @@ dependencies = [
     "firebase-admin>=6.5.0,<7.0.0",
     "google-api-python-client>=2.187.0,<3.0.0",
     "google-auth-oauthlib>=1.2.0,<2.0.0",
+    "psycopg[binary]>=3.2,<4",
 ]
 requires-python = ">=3.11,<3.14"
 

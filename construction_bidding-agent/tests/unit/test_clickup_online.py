@@ -192,3 +192,20 @@ def test_created_tasks_use_the_category_status_and_specific_url():
     assert aggregate_client.created[0]["status"] == "aggregates"
     assert "**URL:** https://example.test/DocumentCenter/View/42" in aggregate_client.created[0]["markdown_description"]
     assert construction_client.created[0]["status"] == "construction"
+
+
+def test_metadata_only_description_is_not_presented_as_project_scope():
+    client = FakeClient()
+    source_bid = bid(
+        title="Commercial roofing replacement",
+        description="Issued OPEN | Closes Sep 1, 2026",
+        description_quality="metadata",
+        description_source="listing-grid",
+    )
+
+    sync_clickup_from_supabase(FakeReader([source_bid]), client)
+
+    task = client.created[0]
+    assert "No project description was provided by the source." in task["markdown_description"]
+    assert "Issued OPEN" not in task["markdown_description"]
+    assert "needs-description" in task["tags"]

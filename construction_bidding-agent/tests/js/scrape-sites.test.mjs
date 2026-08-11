@@ -165,6 +165,28 @@ test("cross-source duplicates consolidate and preserve every source link", () =>
   ]);
 });
 
+test("cross-source duplicates keep the richest available project description", () => {
+  const result = dedupeBids([
+    {
+      platform: "IonWave", agency: "City of Carrollton", title: "Annual Materials Bid",
+      dueDate: "2026-09-01", description: "Status OPEN | Closes Sep 1, 2026",
+      descriptionQuality: "metadata", descriptionSource: "listing-grid"
+    },
+    {
+      platform: "IonWave", agency: "City of Carrollton, TX", title: "Annual Materials Bid",
+      dueDate: "2026-09-01",
+      description: "Supply and delivery of crushed limestone flex base for annual roadway maintenance.",
+      descriptionQuality: "summary", descriptionSource: "detail-page",
+      descriptionSourceUrl: "https://ionwave.example/bid/1"
+    }
+  ]);
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0].descriptionQuality, "summary");
+  assert.equal(result[0].descriptionSource, "detail-page");
+  assert.match(result[0].description, /crushed limestone flex base/);
+});
+
 test("same title and deadline from distinct agencies do not false-merge", () => {
   const result = dedupeBids([
     { agency: "City of Carrollton", title: "Annual Materials Bid", dueDate: "2026-09-01", bidUrl: "https://example.com/1" },

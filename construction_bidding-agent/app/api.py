@@ -31,14 +31,22 @@ from app.site_monitor import build_site_monitor
 
 
 RepositoryProvider = Callable[[], BidRepository]
+BidReaderProvider = Callable[[], Any]
 
 
-def create_bid_router(repository_provider: RepositoryProvider) -> APIRouter:
+def create_bid_router(
+    repository_provider: RepositoryProvider,
+    bid_reader_provider: BidReaderProvider | None = None,
+) -> APIRouter:
     # Every /api route requires a verified, allowlisted Firebase user.
     router = APIRouter(prefix="/api", tags=["bid-copilot"], dependencies=[Depends(require_auth)])
 
     def get_repository() -> BidRepository:
         return repository_provider()
+
+    def get_bid_reader() -> Any:
+        provider = bid_reader_provider or repository_provider
+        return provider()
 
     @router.get("/health")
     def health() -> dict[str, str]:
@@ -46,7 +54,7 @@ def create_bid_router(repository_provider: RepositoryProvider) -> APIRouter:
 
     @router.get("/bids")
     def list_bids(
-        repository: Annotated[BidRepository, Depends(get_repository)],
+        repository: Annotated[Any, Depends(get_bid_reader)],
         platform: str | None = Query(default=None),
     ) -> list[dict[str, Any]]:
         profile = repository.get_company_profile()
@@ -65,6 +73,13 @@ def create_bid_router(repository_provider: RepositoryProvider) -> APIRouter:
             results,
             key=lambda item: (-item["score"]["total"], item["due_date"] or "9999"),
         )
+
+    @router.get("/publication-runs/latest")
+    def latest_publication_run(
+        repository: Annotated[Any, Depends(get_bid_reader)],
+    ) -> dict[str, Any] | None:
+        reader = getattr(repository, "latest_publication_run", None)
+        return reader() if reader else None
 
     @router.post("/bids/cleanup-expired")
     async def cleanup_expired_bids(

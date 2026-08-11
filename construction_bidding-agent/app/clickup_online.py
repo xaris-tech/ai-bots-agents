@@ -177,7 +177,12 @@ def _summarize_bid_details(title: str, description: str) -> tuple[str, str]:
 
 
 def _format_clickup_description(bid: BidInput) -> str:
-    what, scope = _summarize_bid_details(bid.title, bid.description)
+    usable_description = (
+        bid.description
+        if bid.description_quality in {"unknown", "summary", "detailed"}
+        else ""
+    )
+    what, scope = _summarize_bid_details(bid.title, usable_description)
     title = " ".join(bid.title.split()).strip()
     heading = f"{what}: " if what != "N/A" and what != title else ""
     brief = f"{heading}{scope}" if scope != "N/A" else ""
@@ -213,7 +218,11 @@ def _task_payload(bid: BidInput, assignee_id: int) -> dict[str, Any]:
         "name": _task_name(bid),
         "markdown_description": _format_clickup_description(bid),
         "status": _clickup_status(bid),
-        "tags": [bid.platform, dedupe_tag(bid)],
+        "tags": [
+            bid.platform,
+            dedupe_tag(bid),
+            *(["needs-description"] if bid.description_quality in {"missing", "metadata"} else []),
+        ],
         "priority": 2 if score >= 80 else 3 if score >= 55 else 4,
         "assignees": [assignee_id],
     }

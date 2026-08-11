@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { classifyDescriptionQuality } from "./description-quality.mjs";
 
 const defaultSitesDir = fileURLToPath(new URL("./sites/", import.meta.url));
 
@@ -89,8 +90,19 @@ export function dedupeBids(items) {
       continue;
     }
     existing.sourceLinks = [...new Set([...existing.sourceLinks, ...links])];
+    if (descriptionRank(item) > descriptionRank(existing)) {
+      existing.description = item.description;
+      existing.descriptionQuality = item.descriptionQuality || classifyDescriptionQuality(item.description);
+      existing.descriptionSource = item.descriptionSource || "";
+      existing.descriptionSourceUrl = item.descriptionSourceUrl || item.bidUrl || "";
+    }
   }
   return [...consolidated.values()];
+}
+
+function descriptionRank(item) {
+  const quality = item.descriptionQuality || classifyDescriptionQuality(item.description);
+  return { missing: 0, metadata: 1, summary: 2, detailed: 3 }[quality] ?? 0;
 }
 
 function normalizeText(value) {

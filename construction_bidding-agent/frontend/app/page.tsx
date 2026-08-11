@@ -34,6 +34,8 @@ import { getIdToken, firebaseEnabled } from "./firebase";
 import { signOutUser } from "./AuthGate";
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const DEPLOYED_MODE = process.env.NEXT_PUBLIC_DEPLOYED_MODE === "true";
+const SHOW_SCAN_CONTROLS = process.env.NEXT_PUBLIC_SHOW_SCAN_CONTROLS === "true" && !DEPLOYED_MODE;
 
 type Score = {
   total: number;
@@ -171,6 +173,16 @@ type OperationsStatus = {
   registry_url: string;
 };
 
+type PublicationRun = {
+  run_id: string;
+  status: string;
+  finished_at: string;
+  bid_count: number;
+  publisher_id: string;
+  publisher_name: string;
+  entity_checks: { source_id: string; status: string; warning: string; record_count: number; retained_count: number }[];
+};
+
 const SITE_STATUS_LABEL: Record<SiteStatus, string> = {
   healthy: "Healthy",
   empty: "No open bids",
@@ -250,6 +262,7 @@ export default function BidDesk() {
   const [bids, setBids] = useState<Bid[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [publicationRun, setPublicationRun] = useState<PublicationRun | null>(null);
   const [selectedKey, setSelectedKey] = useState("");
   const [query, setQuery] = useState("");
   const [platform, setPlatform] = useState("All portals");
@@ -293,14 +306,16 @@ export default function BidDesk() {
   const load = useCallback(async () => {
     setError("");
     try {
-      const [bidData, profileData, actionData] = await Promise.all([
+      const [bidData, profileData, actionData, latestRun] = await Promise.all([
         api<Bid[]>("/api/bids"),
         api<Profile>("/api/profile"),
         api<Proposal[]>("/api/actions"),
+        api<PublicationRun | null>("/api/publication-runs/latest"),
       ]);
       setBids(bidData);
       setProfile(profileData);
       setProposals(actionData);
+      setPublicationRun(latestRun);
       setSelectedKey((current) => current || bidData[0]?.dedupe_key || "");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load bid data");
@@ -363,12 +378,17 @@ export default function BidDesk() {
   }, [bids, platform, category, expiry, query]);
 
   const selected = bids.find((bid) => bid.dedupe_key === selectedKey) ?? filtered[0];
-  const highFit = bids.filter((bid) => bid.score.label === "high").length;
-  const dueSoon = bids.filter((bid) => {
+  const highFit = filtered.filter((bid) => bid.score.label === "high").length;
+  const dueSoon = filtered.filter((bid) => {
     const days = daysUntil(bid.due_date);
     return days !== null && days >= 0 && days <= 14;
   }).length;
-  const pending = proposals.filter((item) => item.status === "pending").length;
+  const visibleKeys = new Set(filtered.map((bid) => bid.dedupe_key));
+  const pending = proposals.filter((item) => {
+    if (item.status !== "pending") return false;
+    const records = [...(item.payload.rows ?? []), ...(item.payload.tasks ?? [])];
+    return records.some((record) => visibleKeys.has(record.dedupe_key));
+  }).length;
 
   async function runScan() {
     setScanning(true);
@@ -445,7 +465,7 @@ export default function BidDesk() {
   }
 
   async function cleanupExpiredBids() {
-    if (!window.confirm("Archive all overdue tasks in ClickUp Prospects and permanently delete expired bids from the dashboard?")) return;
+    if (!window.confirm("Archive all overdue tasks in ClickUp Prospects and remove expired bids from the current dashboard?")) return;
     setCleaningUp(true);
     setError("");
     try {
@@ -537,14 +557,14 @@ export default function BidDesk() {
           </button>
         </nav>
         <div className="topbar-actions">
-          <span className="system-status"><i /> Local</span>
+          <span className="system-status"><i /> {DEPLOYED_MODE ? "Online" : "Local"}</span>
           {firebaseEnabled && (
             <button className="signout-button" onClick={signOutUser} title="Sign out"><LogOut size={15} /></button>
           )}
           <button className="icon-button" title="Company profile" onClick={() => profileDialog.current?.showModal()}>
             <Settings2 size={18} />
           </button>
-          <button
+          {SHOW_SCAN_CONTROLS && <button
             className="primary-button"
             onClick={runScan}
             disabled={scanning || scanningEmail}
@@ -556,8 +576,8 @@ export default function BidDesk() {
                 ? `Scanning ${scanProgress.completed_units}/${scanProgress.total_units}`
                 : "Starting scan"
               : "Scan all sources"}
-          </button>
-          <button
+          </button>}
+          {SHOW_SCAN_CONTROLS && <button
             className="secondary-button"
             onClick={runEmailScan}
             disabled={scanningEmail || scanning}
@@ -565,12 +585,14 @@ export default function BidDesk() {
           >
             {scanningEmail ? <LoaderCircle className="spin" size={17} /> : <Mail size={17} />}
             {scanningEmail ? "Scanning email" : "Scan email"}
-          </button>
+          </button>}
           <button
             className="secondary-button"
             onClick={syncClickUp}
             disabled={syncingClickUp}
-            title="Filter the already-scraped feed (data/raw/bids.json) by keyword and push to ClickUp, without scraping again"
+            title={DEPLOYED_MODE
+              ? "Push matching current Supabase bids to ClickUp Prospects"
+              : "Filter the already-scraped feed and push matching bids to ClickUp Prospects"}
           >
             {syncingClickUp ? <LoaderCircle className="spin" size={17} /> : <SquareKanban size={17} />}
             {syncingClickUp ? "Syncing ClickUp" : "Sync ClickUp"}
@@ -579,7 +601,7 @@ export default function BidDesk() {
             className="secondary-button"
             onClick={cleanupExpiredBids}
             disabled={cleaningUp}
-            title="Archive overdue tasks from ClickUp Prospects and permanently delete expired bids from the dashboard's stored data"
+            title="Archive overdue tasks from ClickUp Prospects and remove expired bids from the current dashboard"
           >
             {cleaningUp ? <LoaderCircle className="spin" size={17} /> : <Trash2 size={17} />}
             {cleaningUp ? "Cleaning up" : "Clean up expired"}
@@ -602,6 +624,26 @@ export default function BidDesk() {
         </div>
       )}
 
+      {publicationRun && (
+        <div className="success-banner" role="status">
+          <Globe size={17} />
+          <span>
+            Latest published run: {publicationRun.status.replaceAll("_", " ")}
+            {" · "}{publicationRun.bid_count} bids
+            {" · "}{publicationRun.publisher_name || publicationRun.publisher_id}
+            {" · "}{relativeTime(publicationRun.finished_at)}
+            {publicationRun.entity_checks.some((item) => item.retained_count > 0) && " · retained stale source data"}
+          </span>
+        </div>
+      )}
+
+      {DEPLOYED_MODE && !publicationRun && (
+        <div className="success-banner" role="status">
+          <Globe size={17} />
+          <span>Online dashboard ready. Run <code>npm run scrape-and-publish -- --yes</code> from an authorized scraper computer.</span>
+        </div>
+      )}
+
       {clickUpResult && clickUpResult.status !== "failed" && (
         <div className="success-banner" role="status">
           <Check size={17} />
@@ -617,7 +659,7 @@ export default function BidDesk() {
       <div className="workspace">
         <section className="operations-pane">
           <div className="metric-band">
-            <div><span>Current opportunities</span><strong>{bids.length}</strong></div>
+            <div><span>Current opportunities</span><strong>{filtered.length}</strong></div>
             <div><span>High fit</span><strong>{highFit}</strong></div>
             <div><span>Due in 14 days</span><strong>{dueSoon}</strong></div>
             <div><span>Pending approval</span><strong>{pending}</strong></div>
