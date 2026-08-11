@@ -100,14 +100,18 @@ def test_dry_run_reports_creation_without_mutating_clickup():
     assert client.created == []
 
 
-def test_task_description_uses_bid_url_and_website_details_with_na_due_date():
+def test_task_description_explains_what_the_bid_is_for_and_its_scope():
     client = FakeClient()
     source_bid = bid(
         title="Commercial roofing replacement",
         due_date=None,
         bid_url="https://example.test/bids/roofing",
         documents_url="https://drive.example.test/folder",
-        description="Replace the existing roof and repair damaged insulation.",
+        description=(
+            "NOTICE OF BID | The Commissioners' Court will be accepting sealed bids "
+            "for the purchase of the following: | Road Materials: | Not less than "
+            "50,000 tons of flex base road material for county road maintenance."
+        ),
     )
 
     sync_clickup_from_supabase(FakeReader([source_bid]), client)
@@ -115,7 +119,9 @@ def test_task_description_uses_bid_url_and_website_details_with_na_due_date():
     description = client.created[0]["markdown_description"]
     assert "**Due Date:** N/A" in description
     assert "**Bid URL:** https://example.test/bids/roofing" in description
-    assert "**Bid Details:** Replace the existing roof and repair damaged insulation." in description
+    assert "**What the Bid Is About:** Road Materials" in description
+    assert "**Purpose / Scope:** Not less than 50,000 tons of flex base road material for county road maintenance." in description
+    assert "Commissioners' Court will be accepting" not in description
     assert "CEO Decision" not in description
     assert "Documents URL" not in description
     assert "https://drive.example.test/folder" not in description

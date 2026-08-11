@@ -6,7 +6,7 @@
 
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { briefBidDetails, categorizeBid, scoreBid, dedupeKey } from "../src/bids.mjs";
+import { categorizeBid, scoreBid, dedupeKey, summarizeBidDetails } from "../src/bids.mjs";
 import {
   matchesClickUpKeywords
 } from "../src/keywords.mjs";
@@ -148,6 +148,7 @@ async function createTask(listId, bid, dedupeTagValue) {
   const category = categorizeBid(bid);
   const fitScore = scoreBid({ ...bid, category });
   const dueDateMs = bid.dueDate ? Date.parse(`${bid.dueDate}T00:00:00Z`) : undefined;
+  const details = summarizeBidDetails(bid.title, bid.description);
 
   const body = {
     name: taskName(bid),
@@ -159,7 +160,8 @@ async function createTask(listId, bid, dedupeTagValue) {
       `**Location:** ${bid.location || ""}`,
       `**Due Date:** ${bid.dueDate || "N/A"}`,
       `**Bid URL:** ${bid.bidUrl || "N/A"}`,
-      `**Bid Details:** ${briefBidDetails(bid.description)}`,
+      `**What the Bid Is About:** ${details.what}`,
+      `**Purpose / Scope:** ${details.scope}`,
       `**Estimated Value:** ${bid.estimatedValue || ""}`,
       `**Fit Score:** ${fitScore}`,
       `**Last Checked At:** ${bid.scrapedAt || new Date().toISOString()}`

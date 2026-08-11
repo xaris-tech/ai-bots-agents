@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { toClickUpTask } from "../../src/bids.mjs";
 
-test("ClickUp task body uses the bid URL, website details, and N/A due date", () => {
+test("ClickUp task body explains what the bid is for and its scope", () => {
   const task = toClickUpTask({
     platform: "StaticList",
     title: "Commercial roofing replacement",
@@ -11,12 +11,14 @@ test("ClickUp task body uses the bid URL, website details, and N/A due date", ()
     dueDate: "",
     bidUrl: "https://example.test/bids/roofing",
     documentsUrl: "https://drive.example.test/folder",
-    description: "Replace the existing roof and repair damaged insulation.",
+    description: "NOTICE OF BID | The Commissioners' Court will be accepting sealed bids for the purchase of the following: | Road Materials: | Not less than 50,000 tons of flex base road material for county road maintenance.",
   });
 
   assert.match(task.markdown_description, /\*\*Due Date:\*\* N\/A/);
   assert.match(task.markdown_description, /\*\*Bid URL:\*\* https:\/\/example\.test\/bids\/roofing/);
-  assert.match(task.markdown_description, /\*\*Bid Details:\*\* Replace the existing roof/);
+  assert.match(task.markdown_description, /\*\*What the Bid Is About:\*\* Road Materials/);
+  assert.match(task.markdown_description, /\*\*Purpose \/ Scope:\*\* Not less than 50,000 tons/);
+  assert.doesNotMatch(task.markdown_description, /Commissioners' Court will be accepting/);
   assert.doesNotMatch(task.markdown_description, /CEO Decision/);
   assert.doesNotMatch(task.markdown_description, /Documents URL/);
   assert.doesNotMatch(task.markdown_description, /drive\.example\.test/);

@@ -135,15 +135,35 @@ def _task_name(bid: BidInput) -> str:
     return f"{bid.title} - {bid.agency}"
 
 
-def _brief_bid_details(description: str, limit: int = 1000) -> str:
-    details = " ".join(description.split())
-    if not details:
-        return "N/A"
-    return details if len(details) <= limit else f"{details[:limit - 1].rstrip()}…"
+def _summarize_bid_details(title: str, description: str) -> tuple[str, str]:
+    segments = [
+        " ".join(segment.split()).strip()
+        for segment in re.split(r"\s*\|\s*|[\r\n]+", description)
+    ]
+    meaningful = [
+        segment
+        for segment in segments
+        if segment
+        and not re.fullmatch(r"notice (?:of|to) bid(?:ders)?", segment, re.IGNORECASE)
+        and not re.search(
+            r"\baccepting sealed bids\b.*\b(?:the )?following\b", segment, re.IGNORECASE
+        )
+    ]
+    heading = next(
+        (segment[:-1].strip() for segment in meaningful if segment.endswith(":") and len(segment) <= 120),
+        "",
+    )
+    what = heading or " ".join(title.split()).strip() or "N/A"
+    scope_parts = [segment for segment in meaningful if segment.rstrip(":").strip() != heading]
+    scope = " ".join(scope_parts).strip() or "N/A"
+    if len(scope) > 1000:
+        scope = f"{scope[:999].rstrip()}…"
+    return what[:200], scope
 
 
 def _task_payload(bid: BidInput, assignee_id: int) -> dict[str, Any]:
     score = _fit_score(bid)
+    what, scope = _summarize_bid_details(bid.title, bid.description)
     payload: dict[str, Any] = {
         "name": _task_name(bid),
         "markdown_description": "\n".join(
@@ -155,7 +175,8 @@ def _task_payload(bid: BidInput, assignee_id: int) -> dict[str, Any]:
                 f"**Location:** {bid.location}",
                 f"**Due Date:** {bid.due_date.isoformat() if bid.due_date else 'N/A'}",
                 f"**Bid URL:** {bid.bid_url or 'N/A'}",
-                f"**Bid Details:** {_brief_bid_details(bid.description)}",
+                f"**What the Bid Is About:** {what}",
+                f"**Purpose / Scope:** {scope}",
                 f"**Estimated Value:** {bid.estimated_value}",
                 f"**Fit Score:** {score}",
                 f"**Last Checked At:** {bid.scraped_at or datetime.now(UTC).isoformat()}",

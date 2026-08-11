@@ -73,6 +73,7 @@ export function scoreBid(bid, now = new Date()) {
 export function toClickUpTask(bid, now = new Date()) {
   const category = bid.category || categorizeBid(bid);
   const fitScore = bid.fitScore ?? scoreBid({ ...bid, category }, now);
+  const details = summarizeBidDetails(bid.title, bid.description);
 
   return {
     name: `${bid.platform}: ${bid.title}`,
@@ -84,7 +85,8 @@ export function toClickUpTask(bid, now = new Date()) {
       `**Location:** ${bid.location || ""}`,
       `**Due Date:** ${bid.dueDate || "N/A"}`,
       `**Bid URL:** ${bid.bidUrl || "N/A"}`,
-      `**Bid Details:** ${briefBidDetails(bid.description)}`,
+      `**What the Bid Is About:** ${details.what}`,
+      `**Purpose / Scope:** ${details.scope}`,
       `**Estimated Value:** ${bid.estimatedValue || ""}`,
       `**Fit Score:** ${fitScore}`,
       `**Last Checked At:** ${now.toISOString()}`
@@ -95,10 +97,25 @@ export function toClickUpTask(bid, now = new Date()) {
   };
 }
 
-export function briefBidDetails(description, limit = 1000) {
-  const details = String(description ?? "").replace(/\s+/g, " ").trim();
-  if (!details) return "N/A";
-  return details.length <= limit ? details : `${details.slice(0, limit - 1).trimEnd()}…`;
+export function summarizeBidDetails(title, description) {
+  const meaningful = String(description ?? "")
+    .split(/\s*\|\s*|[\r\n]+/)
+    .map((segment) => segment.replace(/\s+/g, " ").trim())
+    .filter((segment) => segment
+      && !/^notice (?:of|to) bid(?:ders)?$/i.test(segment)
+      && !/\baccepting sealed bids\b.*\b(?:the )?following\b/i.test(segment));
+  const heading = meaningful.find((segment) => segment.endsWith(":") && segment.length <= 120);
+  const what = (heading ? heading.slice(0, -1).trim() : String(title ?? "").replace(/\s+/g, " ").trim()) || "N/A";
+  const scopeText = meaningful
+    .filter((segment) => segment.replace(/:$/, "").trim() !== (heading ?? "").replace(/:$/, "").trim())
+    .join(" ")
+    .trim();
+  const scope = !scopeText
+    ? "N/A"
+    : scopeText.length <= 1000
+      ? scopeText
+      : `${scopeText.slice(0, 999).trimEnd()}…`;
+  return { what: what.slice(0, 200), scope };
 }
 
 function scoreDueDate(value, now) {
