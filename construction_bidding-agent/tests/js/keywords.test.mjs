@@ -1,6 +1,38 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyClickUpMatch, matchesClickUpKeywords } from "../../src/keywords.mjs";
+import {
+  AGGREGATE_KEYWORDS,
+  CLICKUP_EXCLUDE_KEYWORDS,
+  CLICKUP_SCOPE_EXCLUDE_KEYWORDS,
+  CONSTRUCTION_CONTEXT_KEYWORDS,
+  GENERAL_CONSTRUCTION_KEYWORDS,
+  classifyClickUpMatch,
+  matchesClickUpKeywords,
+} from "../../src/keywords.mjs";
+import { categorizeBid } from "../../frontend/app/categorize.ts";
+
+function frontendCategory(text) {
+  return {
+    aggregates: "Aggregates",
+    general: "Construction",
+    other: null,
+  }[categorizeBid(text)];
+}
+
+test("keeps the frontend filter in parity with the canonical ClickUp classifier", () => {
+  const cases = [
+    ...GENERAL_CONSTRUCTION_KEYWORDS.map((term) => `${term} project`),
+    ...AGGREGATE_KEYWORDS.map((term) => `${term} supply`),
+    ...CLICKUP_SCOPE_EXCLUDE_KEYWORDS.map((term) => `${term} construction improvements`),
+    ...CLICKUP_EXCLUDE_KEYWORDS.map((term) => `${term} construction improvements`),
+    ...CONSTRUCTION_CONTEXT_KEYWORDS.map((term) => `asphalt ${term}`),
+    "Accounting software subscription",
+  ];
+
+  for (const text of cases) {
+    assert.equal(frontendCategory(text), classifyClickUpMatch(text), text);
+  }
+});
 
 test("routes ClickUp matches to the aggregate or construction status", () => {
   assert.equal(classifyClickUpMatch("Supply of limestone flex base"), "Aggregates");

@@ -47,6 +47,15 @@ const CLICKUP_SCOPE_EXCLUDE_KEYWORDS = [
   "widening", "bridge",
 ];
 
+// Professional-services solicitations can mention construction scopes without
+// representing work Cortex self-performs. This matches the deployed Python
+// backend and the canonical JavaScript ClickUp filter.
+const CLICKUP_EXCLUDE_KEYWORDS = [
+  "construction management", "construction manager", "manager at risk", "cmar",
+  "inspection services", "engineering services", "architectural services",
+  "design services", "consulting services",
+];
+
 // An aggregate-material bid that ALSO uses one of these repair/install verbs is
 // a construction job that merely mentions a material — General Construction wins.
 const CONSTRUCTION_CONTEXT_KEYWORDS = [
@@ -67,6 +76,7 @@ const generalConstructionPattern = buildKeywordPattern(GENERAL_CONSTRUCTION_KEYW
 const aggregatePattern = buildKeywordPattern(AGGREGATE_KEYWORDS);
 const constructionContextPattern = buildKeywordPattern(CONSTRUCTION_CONTEXT_KEYWORDS);
 const clickUpScopeExcludePattern = buildKeywordPattern(CLICKUP_SCOPE_EXCLUDE_KEYWORDS);
+const clickUpExcludePattern = buildKeywordPattern(CLICKUP_EXCLUDE_KEYWORDS);
 
 export function categorizeBid(title: string, description = ""): BidCategory {
   const text = `${title ?? ""} ${description ?? ""}`;
@@ -74,7 +84,9 @@ export function categorizeBid(title: string, description = ""): BidCategory {
   const isAggregateMaterial = aggregatePattern.test(text);
   const isConstructionJob = isAggregateMaterial && constructionContextPattern.test(text);
   if (isAggregateMaterial && !isConstructionJob) return "aggregates";
-  if (isConstructionJob || generalConstructionPattern.test(text)) return "general";
+  if (isConstructionJob || (generalConstructionPattern.test(text) && !clickUpExcludePattern.test(text))) {
+    return "general";
+  }
   return "other";
 }
 
