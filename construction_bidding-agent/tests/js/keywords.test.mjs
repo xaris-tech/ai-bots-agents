@@ -2,6 +2,36 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { matchesClickUpKeywords } from "../../src/keywords.mjs";
 
+test("drops civil infrastructure terms removed from the ClickUp filter", () => {
+  const removedTerms = [
+    "stormwater", "landscaping", "culvert", "resurfacing", "paving",
+    "sewer", "main line", "pump station", "wastewater", "lift station",
+    "transmission main", "levee", "flood control", "traffic signal",
+    "widening", "bridge",
+  ];
+
+  for (const term of removedTerms) {
+    assert.equal(matchesClickUpKeywords(term), false, term);
+  }
+});
+
+test("keeps commercial remodel trade terms in the ClickUp filter", () => {
+  const remodelTerms = [
+    "carpentry", "structural steel", "framing", "roofing", "windows",
+    "glazing", "stucco", "EIFS", "metal panel", "waterproofing", "sealants",
+    "electrical", "plumbing", "HVAC", "fire protection", "sprinklers",
+    "low-voltage", "data-comm", "drywall", "painting", "flooring", "tile",
+    "carpet", "VCT", "epoxy", "ceilings", "ACT grid", "millwork",
+    "cabinetry", "doors", "frames", "hardware", "fire alarm", "elevator",
+    "signage", "insulation", "storefront systems", "concrete flatwork",
+    "final cleaning", "permitting", "inspections coordination",
+  ];
+
+  for (const term of remodelTerms) {
+    assert.equal(matchesClickUpKeywords(term), true, term);
+  }
+});
+
 test("keeps scopes reflected in the active ClickUp Projects list", () => {
   assert.equal(matchesClickUpKeywords("Job Order Contract (JOC) for facilities installation and maintenance"), true);
   assert.equal(matchesClickUpKeywords("Rock and Base Materials - limestone flex base"), true);

@@ -6,20 +6,20 @@
 
 export const GENERAL_CONSTRUCTION_KEYWORDS = [
   "concrete",
-  "sitework", "excavation", "grading", "drainage", "stormwater",
+  "sitework", "excavation", "grading", "drainage",
   "renovation", "remodeling", "construction", "building improvements",
-  "general contractor", "joc", "job order contracting",
-  "foundation", "structural concrete", "masonry", "steel erection",
-  "parking lot", "landscaping", "fencing", "accessibility", "ada improvements", "ada",
-  // Civil/utility infrastructure terms — added after auditing the no-match
-  // backlog and finding these clearly-construction bids (bridge repairs,
-  // water main replacements, road resurfacing, etc.) fell through because
-  // none of the above generic terms matched them.
-  "bridge", "culvert", "paving", "resurfacing", "reconstruction", "rehabilitation",
-  "water main", "waterline", "water line", "sewer", "wastewater",
-  "lift station", "pump station", "transmission main", "levee", "sidewalk",
-  "traffic signal", "roadway", "improvements", "flood control",
-  "demolition", "abatement", "widening"
+  "general contractor", "general contracting", "joc", "job order contracting",
+  "foundation", "structural concrete", "structural steel", "masonry", "steel erection",
+  "framing", "carpentry", "parking lot", "fencing", "accessibility", "ada improvements", "ada",
+  "reconstruction", "rehabilitation", "sidewalk", "roadway", "improvements",
+  "demolition", "abatement", "roofing", "window", "glazing", "exterior finishes",
+  "stucco", "eifs", "metal panel", "waterproofing", "sealant", "electrical",
+  "plumbing", "hvac", "fire protection", "sprinkler", "low voltage", "low-voltage",
+  "data comm", "data-comm", "drywall", "painting", "flooring", "tile", "carpet",
+  "vct", "epoxy", "ceiling", "act grid", "millwork", "cabinetry", "door", "frame",
+  "hardware", "fire alarm", "elevator", "signage", "insulation", "glass",
+  "storefront system", "concrete flatwork", "final cleaning", "permitting",
+  "inspections coordination"
 ];
 
 export const AGGREGATE_KEYWORDS = [

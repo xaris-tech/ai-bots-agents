@@ -82,18 +82,23 @@ export function toClickUpTask(bid, now = new Date()) {
       `**Agency / Buyer:** ${bid.agency || ""}`,
       `**Project Name:** ${bid.title || ""}`,
       `**Location:** ${bid.location || ""}`,
-      `**Due Date:** ${bid.dueDate || ""}`,
-      `**Bid URL:** ${bid.bidUrl || ""}`,
-      `**Documents URL / Drive Folder:** ${bid.documentsUrl || ""}`,
+      `**Due Date:** ${bid.dueDate || "N/A"}`,
+      `**Bid URL:** ${bid.bidUrl || "N/A"}`,
+      `**Bid Details:** ${briefBidDetails(bid.description)}`,
       `**Estimated Value:** ${bid.estimatedValue || ""}`,
       `**Fit Score:** ${fitScore}`,
-      `**CEO Decision:** Pending`,
       `**Last Checked At:** ${now.toISOString()}`
     ].join("\n"),
     due_date: bid.dueDate,
     priority: fitScore >= 80 ? "high" : fitScore >= 55 ? "normal" : "low",
     tags: [bid.platform, category].filter(Boolean)
   };
+}
+
+export function briefBidDetails(description, limit = 1000) {
+  const details = String(description ?? "").replace(/\s+/g, " ").trim();
+  if (!details) return "N/A";
+  return details.length <= limit ? details : `${details.slice(0, limit - 1).trimEnd()}…`;
 }
 
 function scoreDueDate(value, now) {
