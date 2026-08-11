@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .agent import run_bid_copilot
+async def run_bid_copilot(*args, **kwargs):
+    """Load optional local agent dependencies only when chat is invoked."""
+    from .agent import run_bid_copilot as _run_bid_copilot
+
+    return await _run_bid_copilot(*args, **kwargs)
 
 __all__ = ["run_bid_copilot"]
