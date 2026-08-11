@@ -16,12 +16,16 @@ class FakeClient:
     def __init__(self, tasks=None):
         self.tasks = tasks or []
         self.created = []
+        self.updated = []
 
     def list_tasks(self, **_kwargs):
         return self.tasks
 
     def create_task(self, payload):
         self.created.append(payload)
+
+    def update_task_description(self, task_id, description):
+        self.updated.append((task_id, description))
 
 
 def bid(**overrides):
@@ -77,7 +81,7 @@ def test_sync_dedupes_and_drops_bare_non_texas_states():
     existing = bid(title="Existing concrete project", bid_id="EX-1")
     new = bid(title="New roofing project", bid_id="NEW-1")
     client = FakeClient(
-        tasks=[{"name": "different legacy name", "tags": [{"name": dedupe_tag(existing)}]}]
+        tasks=[{"id": "task-existing", "name": "different legacy name", "tags": [{"name": dedupe_tag(existing)}]}]
     )
 
     result = sync_clickup_from_supabase(
@@ -87,8 +91,11 @@ def test_sync_dedupes_and_drops_bare_non_texas_states():
     assert result["total_bids"] == 2
     assert result["matched"] == 2
     assert result["created"] == 1
-    assert result["skipped"] == 1
+    assert result["updated"] == 1
+    assert result["skipped"] == 0
     assert client.created[0]["name"] == "New roofing project - City of Test"
+    assert client.updated[0][0] == "task-existing"
+    assert "**What the Bid Is About:** Existing concrete project" in client.updated[0][1]
 
 
 def test_dry_run_reports_creation_without_mutating_clickup():
@@ -98,6 +105,7 @@ def test_dry_run_reports_creation_without_mutating_clickup():
 
     assert result["created"] == 1
     assert client.created == []
+    assert client.updated == []
 
 
 def test_task_description_explains_what_the_bid_is_for_and_its_scope():

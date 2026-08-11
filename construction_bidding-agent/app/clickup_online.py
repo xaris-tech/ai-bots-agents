@@ -245,6 +245,14 @@ class ClickUpClient:
         )
         self._json(response, "task creation")
 
+    def update_task_description(self, task_id: str, description: str) -> None:
+        response = self.session.put(
+            f"{CLICKUP_API_BASE}/task/{task_id}",
+            json={"markdown_description": description},
+            timeout=self.timeout,
+        )
+        self._json(response, "task description update")
+
     def archive_task(self, task_id: str) -> None:
         response = self.session.put(
             f"{CLICKUP_API_BASE}/task/{task_id}",
@@ -267,26 +275,35 @@ def sync_clickup_from_supabase(reader: Any, client: ClickUpClient, *, dry_run: b
     texas_bids = [bid for bid in all_bids if bid.location.strip() not in NON_TEXAS_STATES]
     matches = [bid for bid in texas_bids if matches_clickup_keywords(bid)]
     existing = client.list_tasks(include_closed=True)
-    names = {str(task.get("name") or "") for task in existing}
-    tags = {
-        str(tag.get("name"))
+    tasks_by_name = {str(task.get("name") or ""): task for task in existing}
+    tasks_by_tag = {
+        str(tag.get("name")): task
         for task in existing
         for tag in task.get("tags", [])
         if isinstance(tag, dict) and str(tag.get("name", "")).startswith("dedupe-")
     }
     assignee_id = int(os.getenv("CLICKUP_DEFAULT_ASSIGNEE_ID", "114218682"))
     created = 0
+    updated = 0
     skipped = 0
     for bid in matches:
         name = _task_name(bid)
         tag = dedupe_tag(bid)
-        if name in names or tag in tags:
-            skipped += 1
+        existing_task = tasks_by_tag.get(tag) or tasks_by_name.get(name)
+        payload = _task_payload(bid, assignee_id)
+        if existing_task:
+            task_id = str(existing_task.get("id") or "")
+            if not task_id:
+                skipped += 1
+                continue
+            if not dry_run:
+                client.update_task_description(task_id, payload["markdown_description"])
+            updated += 1
             continue
         if not dry_run:
-            client.create_task(_task_payload(bid, assignee_id))
-        names.add(name)
-        tags.add(tag)
+            client.create_task(payload)
+        tasks_by_name[name] = {"name": name, "tags": [{"name": tag}]}
+        tasks_by_tag[tag] = tasks_by_name[name]
         created += 1
     workspace = os.getenv("CLICKUP_WORKSPACE_ID", DEFAULT_WORKSPACE_ID)
     return {
@@ -294,9 +311,13 @@ def sync_clickup_from_supabase(reader: Any, client: ClickUpClient, *, dry_run: b
         "total_bids": len(texas_bids),
         "matched": len(matches),
         "created": created,
+        "updated": updated,
         "skipped": skipped,
         "list_url": f"https://app.clickup.com/{workspace}/v/li/{PROSPECTS_LIST_ID}",
-        "logs": [f"Matched {len(matches)} of {len(texas_bids)} current Texas bids."],
+        "logs": [
+            f"Matched {len(matches)} of {len(texas_bids)} current Texas bids.",
+            f"Created {created}, updated {updated}, skipped {skipped} ClickUp tasks.",
+        ],
     }
 
 

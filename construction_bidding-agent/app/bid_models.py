@@ -152,6 +152,7 @@ class ClickUpSyncSummary(BaseModel):
     total_bids: int = 0
     matched: int = 0
     created: int = 0
+    updated: int = 0
     skipped: int = 0
     list_url: str = ""
     error: str = ""
