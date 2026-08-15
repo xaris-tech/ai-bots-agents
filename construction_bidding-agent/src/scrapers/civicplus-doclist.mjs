@@ -69,7 +69,7 @@ export function normalizeDocListLinks(links, site, scrapedAt = new Date().toISOS
       agency: site.agency,
       location: site.location,
       dueDate: "",
-      bidUrl: site.url,
+      bidUrl: link.href,
       documentsUrl: link.href,
       estimatedValue: "",
       description: `${title} | posted as solicitation document; due date is inside the linked document`,

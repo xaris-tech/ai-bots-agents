@@ -1,0 +1,313 @@
+{
+  "spreadsheetId": "1Xgs6f4LErF9NC0_QrJ8cJaBvDofiCqcy",
+  "tabs": [
+    {
+      "key": "Main",
+      "name": "Main Target Entities Agg",
+      "gid": "182935198",
+      "nameColumn": 0,
+      "headingRows": [60, 61]
+    },
+    {
+      "key": "Additional",
+      "name": "Add. Targer Entities for Agg.",
+      "gid": "1788001415",
+      "nameColumn": 1,
+      "headingRows": [1]
+    }
+  ],
+  "aliases": [
+    {
+      "from": "Williamson",
+      "to": "Williamson County"
+    }
+  ],
+  "ownership": [
+    {
+      "entity": "Arlington",
+      "disposition": "batch-owned",
+      "owner": "Bonfire",
+      "evidence": { "source": "data/raw/bonfire-bids.json", "agencyNames": ["City of Arlington"] }
+    },
+    {
+      "entity": "Denton County",
+      "disposition": "batch-owned",
+      "owner": "Bonfire",
+      "evidence": { "source": "data/raw/bonfire-bids.json", "agencyNames": ["Denton County"] }
+    },
+    {
+      "entity": "Fort Worth",
+      "disposition": "batch-owned",
+      "owner": "Bonfire",
+      "evidence": { "source": "data/raw/bonfire-bids.json", "agencyNames": ["City of Fort Worth"] }
+    },
+    {
+      "entity": "Lewisville",
+      "disposition": "batch-owned",
+      "owner": "Bonfire",
+      "evidence": { "source": "data/raw/bonfire-bids.json", "agencyNames": ["City of Lewisville"] }
+    },
+    {
+      "entity": "Plano",
+      "disposition": "batch-owned",
+      "owner": "IonWave",
+      "evidence": { "source": "data/raw/ionwave-bids.json", "agencyNames": ["City of Plano"] }
+    },
+    {
+      "entity": "Tarrant County",
+      "disposition": "batch-owned",
+      "owner": "IonWave",
+      "evidence": { "source": "data/raw/ionwave-bids.json", "agencyNames": ["Tarrant County"] }
+    },
+    {
+      "entity": "Cedar Hill",
+      "disposition": "batch-owned",
+      "owner": "DemandStar",
+      "evidence": {
+        "source": "data/raw/demandstar-bids.json",
+        "agencyNames": ["City of Cedar Hill, TX, Cedar Hill, TX"]
+      }
+    },
+    {
+      "entity": "Bedford",
+      "disposition": "blocked",
+      "owner": "City of Bedford Purchasing",
+      "reason": "The official CivicEngage fallback repeatedly terminates the browser before producing a scrape report, and current DemandStar data does not demonstrate Bedford attribution or completeness.",
+      "evidence": { "source": "https://bedfordtx.gov/920/Bidding" }
+    },
+    {
+      "entity": "Farmers Branch",
+      "disposition": "manual",
+      "owner": "City of Farmers Branch Purchasing",
+      "reason": "The official purchasing page does not expose a complete public solicitation list; the workbook's GovCB link is a third-party aggregator and is not accepted as production coverage.",
+      "evidence": { "source": "https://www.farmersbranchtx.gov/519/Purchasing" }
+    },
+    {
+      "entity": "Blue Mound",
+      "disposition": "manual",
+      "owner": "City of Blue Mound",
+      "reason": "The official city site provides department and records contacts but no public current-bid listing.",
+      "evidence": { "source": "https://bluemoundtexas.gov/government/" }
+    },
+    {
+      "entity": "Everman",
+      "disposition": "manual",
+      "owner": "City of Everman",
+      "reason": "No complete public procurement listing is available; opportunities require checking the city's legal-notice process or contacting the city.",
+      "evidence": { "source": "https://www.evermantx.us/" }
+    },
+    {
+      "entity": "Edgecliff Village",
+      "disposition": "manual",
+      "owner": "Town of Edgecliff Village",
+      "reason": "No public procurement portal or complete online current-bid listing is available; opportunities must be confirmed with the town contact.",
+      "evidence": { "source": "https://www.edgecliff-village.com/" }
+    },
+    {
+      "entity": "River Oaks",
+      "disposition": "manual",
+      "owner": "City of River Oaks",
+      "reason": "The official city site publishes council records but no complete current procurement listing; opportunities must be confirmed with the city.",
+      "evidence": { "source": "https://www.riveroakstx.com/" }
+    },
+    {
+      "entity": "Rhome",
+      "disposition": "manual",
+      "owner": "City of Rhome",
+      "reason": "As of 2026-08-04, the official city site exposes projects, documents, and contacts but no complete current-bid listing; the workbook's TexasBids aggregator is not accepted as production coverage.",
+      "evidence": { "source": "https://www.cityofrhome.com/" }
+    },
+    {
+      "entity": "Bartonville",
+      "disposition": "manual",
+      "owner": "Town of Bartonville",
+      "reason": "As of 2026-08-04, the official town site publishes required legal notices through the Town Secretary but has no complete public procurement listing; the workbook's TexasBids aggregator is rejected.",
+      "evidence": { "source": "https://townofbartonville.com/2155/Administration" }
+    },
+    {
+      "entity": "Graham",
+      "disposition": "manual",
+      "owner": "City of Graham Purchasing",
+      "reason": "As of 2026-08-04, the official city site publishes occasional individual RFP documents but no complete current-solicitation index, so completeness cannot be automated.",
+      "evidence": { "source": "https://www.cityofgrahamtexas.com/city-hall/" }
+    },
+    {
+      "entity": "Graford",
+      "disposition": "manual",
+      "owner": "City of Graford",
+      "reason": "As of 2026-08-04, no official complete online current-bid listing was identified; opportunities require direct city confirmation.",
+      "evidence": { "source": "https://www.co.palo-pinto.tx.us/" }
+    },
+    {
+      "entity": "Bridgeport",
+      "disposition": "manual",
+      "owner": "City of Bridgeport",
+      "reason": "As of 2026-08-04, the official vendor page states that purchasing is decentralized and there is no central bid list or purchasing agent.",
+      "evidence": { "source": "https://www.cityofbridgeport.net/102/Vendors" }
+    },
+    {
+      "entity": "Young County",
+      "disposition": "blocked",
+      "owner": "Public Purchase",
+      "reason": "The official County of Young portal requires vendor login and is retained disabled under the known Public Purchase access/geo-block until a complete authenticated smoke succeeds.",
+      "evidence": { "source": "https://www1.publicpurchase.com/gems/buyer/public/home?region=TX&syndicatedOrgId=22721" }
+    },
+    {
+      "entity": "Johnson County",
+      "disposition": "batch-owned",
+      "owner": "Bonfire",
+      "reason": "The central Bonfire workflow includes Johnson County's official portal as an explicit seed and exact agency attribution is present. A 2026-08-04 direct feed audit verified the official portal currently has zero open projects, so a duplicate direct profile is unnecessary.",
+      "evidence": {
+        "source": "data/raw/bonfire-bids.json",
+        "agencyNames": ["Johnson County"],
+        "officialPortal": "https://johnsoncountytx.bonfirehub.com/portal/?tab=openOpportunities",
+        "checkedAt": "2026-08-04"
+      }
+    },
+    {
+      "entity": "Grapevine",
+      "disposition": "batch-owned",
+      "owner": "IonWave",
+      "reason": "The central IonWave feed has exact City of Grapevine attribution. Its last two projects matched the same two projects independently present in DemandStar, and a 2026-08-04 direct official-portal audit verified zero currently open events; a duplicate direct profile is unnecessary.",
+      "evidence": {
+        "source": "data/raw/ionwave-bids.json",
+        "agencyNames": ["City of Grapevine, TX"],
+        "officialPortal": "https://gpvine.ionwave.net/SourcingEvents.aspx?SourceType=1",
+        "comparisonSource": "data/raw/demandstar-bids.json",
+        "checkedAt": "2026-08-04"
+      }
+    },
+    {
+      "entity": "Tyler",
+      "disposition": "manual",
+      "owner": "City of Tyler Purchasing",
+      "reason": "As of 2026-08-04, the official vendor-and-bids page says bid notices are published in the newspaper and departments maintain separate vendor lists; its online RFQ/RFP section alone is not a complete citywide bid listing.",
+      "evidence": {
+        "source": "https://www.cityoftyler.org/City-Government/Vendors-and-Bids"
+      }
+    },
+    {
+      "entity": "Mount Pleasant",
+      "disposition": "blocked",
+      "owner": "OpenGov",
+      "reason": "The official city purchasing page identifies OpenGov as the complete solicitation portal, but the production portal returns a Cloudflare access block to unattended access. Keep human review until the portal can produce a complete automated result.",
+      "evidence": {
+        "source": "https://mpcity.net/finance-purchasing",
+        "officialPortal": "https://procurement.opengov.com/portal/mpcity",
+        "checkedAt": "2026-08-04"
+      }
+    },
+    {
+      "entity": "Blanco County",
+      "disposition": "manual",
+      "owner": "Blanco County",
+      "reason": "As of 2026-08-04, the official county site exposes notices, offices, and public-information contacts but no complete current procurement listing. The workbook URL belongs to the City of Blanco, a different target entity, and cannot establish county coverage.",
+      "evidence": {
+        "source": "https://www.blancocountytexas.gov/"
+      }
+    },
+    {
+      "entity": "Bexar County",
+      "disposition": "blocked",
+      "owner": "Bexar County Purchasing / Infor and CivCast",
+      "reason": "The official county page splits complete procurement coverage between the Infor Supplier Portal for goods, services, facilities, and parks and CivCast for Public Works. The Infor workflow requires supplier registration for vendor access and the CivCast listing returns an access block to unattended retrieval, so neither a partial source nor embedded credentials are accepted as ready coverage.",
+      "evidence": {
+        "source": "https://www.bexar.org/2377/Do-Business-with-Bexar-County",
+        "supplierPortal": "https://bexarprod-lm01.cloud.infor.com:1442/lmscm/SourcingSupplier/list/SourcingEvent.OpenForBid?csk.CHP=LMPROC&csk.SupplierGroup=100&menu=EventManagement.BrowseOpenEvents",
+        "publicWorksPortal": "https://www.civcastusa.com/bids",
+        "checkedAt": "2026-08-04"
+      }
+    },
+    {
+      "entity": "Bryan",
+      "disposition": "batch-owned",
+      "owner": "IonWave",
+      "reason": "The City of Bryan states that all vendor bids use the Brazos Valley Online Bidding System, and the central authenticated IonWave feed contains exact City of Bryan attribution. A duplicate direct profile would not add source coverage.",
+      "evidence": {
+        "source": "data/raw/ionwave-bids.json",
+        "agencyNames": ["City of Bryan"],
+        "officialPortal": "https://brazosbid.ionwave.net/SourcingEvents.aspx?SourceType=1",
+        "officialPage": "https://www.bryantx.gov/purchasing-services/",
+        "checkedAt": "2026-08-04"
+      }
+    },
+    {
+      "entity": "Kyle",
+      "disposition": "blocked",
+      "owner": "OpenGov",
+      "reason": "The official city site identifies OpenGov as its current RFP and bid portal, but the production portal returns HTTP 403 to unattended access. Keep human review until the official portal can produce a complete automated result.",
+      "evidence": {
+        "source": "https://www.cityofkyle.gov/rfps",
+        "officialPortal": "https://procurement.opengov.com/portal/cityofkyle",
+        "checkedAt": "2026-08-04"
+      }
+    },
+    {
+      "entity": "Killeen",
+      "disposition": "blocked",
+      "owner": "OpenGov",
+      "reason": "The official Purchasing page states that OpenGov is the one location for all City of Killeen bid opportunities and requires vendor registration to view current solicitations; the production portal also returns HTTP 403 to unattended access.",
+      "evidence": {
+        "source": "https://killeentexas.gov/414/Purchasing",
+        "officialPortal": "https://procurement.opengov.com/portal/killeentexas",
+        "checkedAt": "2026-08-04"
+      }
+    },
+    {
+      "entity": "Harker Heights",
+      "disposition": "manual",
+      "owner": "City of Harker Heights Finance",
+      "reason": "As of 2026-08-04, the official city site and Finance materials document competitive purchasing but expose no complete current-bid index or official procurement portal. The workbook's TexasBids link is a third-party aggregator and is rejected as production coverage.",
+      "evidence": {
+        "source": "https://www.harkerheights.gov/"
+      }
+    },
+    {
+      "entity": "Reno",
+      "disposition": "manual",
+      "owner": "City of Reno, Parker County",
+      "reason": "Human-approved on 2026-08-04: Reno means the Parker County city in the Main western-DFW scope. Its official site exposes public notices and states that required advertisements use the official city paper, but no complete online procurement index was identified. The separate Reno in Lamar County is out of scope.",
+      "evidence": {
+        "source": "https://www.renotx.gov/",
+        "officialNotices": "https://www.renotx.gov/government/agendas-and-minutes/",
+        "checkedAt": "2026-08-04"
+      }
+    },
+    {
+      "entity": "Pelican Bay",
+      "disposition": "manual",
+      "owner": "City of Pelican Bay",
+      "reason": "Human-approved on 2026-08-04: the supplied CivCast URL is a one-off project page and is rejected as complete city ownership. The official city site publishes occasional individual bid notices in its News archive but exposes no durable complete procurement index.",
+      "evidence": {
+        "source": "https://cityofpelicanbay.com/category/news/",
+        "rejectedSource": "https://www.civcastusa.com/project/67240224f73b74d21c98ff3c/summary",
+        "checkedAt": "2026-08-04"
+      }
+    },
+    {
+      "entity": "Cross Timber",
+      "disposition": "manual",
+      "owner": "Town of Cross Timber",
+      "reason": "Human-approved on 2026-08-04: Cross Timber is the incorporated Johnson County town. Its official site exposes government records but no complete procurement index; the supplied InstantMarkets geographic search is rejected as third-party ground truth.",
+      "evidence": {
+        "source": "https://crosstimbertx.com/",
+        "identity": "https://directory.tml.org/profile/city/1648",
+        "rejectedSource": "https://www.instantmarkets.com/l/%22Cross_Timber,_Texas%22/t/rfp",
+        "checkedAt": "2026-08-04"
+      }
+    },
+    {
+      "entity": "Marfa",
+      "disposition": "blocked",
+      "owner": "City of Marfa Bids and RFPs",
+      "reason": "Human-approved official source, but both the normal headless profile run and the unattended real-Chrome workflow received an HTTP 403 bot block on 2026-08-04. The configured profile remains disabled until the canonical open/closed index can produce a complete automated result.",
+      "evidence": {
+        "source": "https://www.cityofmarfa.com/rfps",
+        "closedIndex": "https://www.cityofmarfa.com/rfps/closed",
+        "blockKind": "bot-block",
+        "executionPaths": ["headless", "real-chrome"],
+        "checkedAt": "2026-08-04"
+      }
+    }
+  ]
+}

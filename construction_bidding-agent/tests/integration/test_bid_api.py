@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.api import create_bid_router
 from app.bid_models import BidInput, PortalRunInput, ScanSummary
+from app.clickup_cleanup import ClickUpCleanupError
 from app.repository import BidRepository
 
 
@@ -20,7 +21,7 @@ def test_bid_api_lists_scored_current_bids(tmp_path) -> None:
                     title="Drainage construction",
                     agency="Tarrant County",
                     location="Texas",
-                    due_date=date(2026, 8, 1),
+                    due_date=date(2099, 8, 1),
                     bid_url="https://example.test/bids/42",
                 )
             ],
@@ -53,6 +54,68 @@ def test_bid_api_filters_by_platform(tmp_path) -> None:
     response = TestClient(app).get("/api/bids?platform=DemandStar")
 
     assert [item["platform"] for item in response.json()] == ["DemandStar"]
+
+
+def test_cleanup_expired_archives_clickup_before_deleting_local_rows(
+    tmp_path, monkeypatch
+) -> None:
+    repository = BidRepository(tmp_path / "bids.db")
+    repository.record_portal_run(
+        PortalRunInput.success(
+            "IonWave",
+            [
+                BidInput(
+                    platform="IonWave",
+                    title="Expired opportunity",
+                    due_date=date(2020, 1, 1),
+                )
+            ],
+        )
+    )
+
+    async def fake_cleanup() -> int:
+        return 3
+
+    monkeypatch.setattr("app.api.cleanup_expired_clickup_tasks", fake_cleanup)
+    app = FastAPI()
+    app.include_router(create_bid_router(lambda: repository))
+
+    response = TestClient(app).post("/api/bids/cleanup-expired")
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted": 1, "clickup_archived": 3}
+
+
+def test_cleanup_expired_preserves_local_rows_when_clickup_fails(
+    tmp_path, monkeypatch
+) -> None:
+    repository = BidRepository(tmp_path / "bids.db")
+    repository.record_portal_run(
+        PortalRunInput.success(
+            "IonWave",
+            [
+                BidInput(
+                    platform="IonWave",
+                    title="Expired opportunity",
+                    due_date=date(2020, 1, 1),
+                )
+            ],
+        )
+    )
+
+    async def fake_cleanup() -> int:
+        raise ClickUpCleanupError("ClickUp unavailable")
+
+    monkeypatch.setattr("app.api.cleanup_expired_clickup_tasks", fake_cleanup)
+    app = FastAPI()
+    app.include_router(create_bid_router(lambda: repository))
+
+    response = TestClient(app).post("/api/bids/cleanup-expired")
+
+    assert response.status_code == 502
+    with repository._connect() as connection:
+        remaining = connection.execute("SELECT COUNT(*) FROM bids").fetchone()[0]
+    assert remaining == 1
 
 
 def test_profile_and_action_proposal_endpoints(tmp_path) -> None:
@@ -102,3 +165,30 @@ def test_scan_endpoint_runs_workflow(tmp_path, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["total_records"] == 3
+
+
+def test_gmail_scan_endpoint_persists_email_bids(tmp_path, monkeypatch) -> None:
+    repository = BidRepository(tmp_path / "bids.db")
+
+    async def fake_scan_gmail() -> PortalRunInput:
+        return PortalRunInput.success(
+            "Gmail",
+            [
+                BidInput(
+                    platform="Gmail",
+                    bid_id="message-42",
+                    title="County aggregate invitation",
+                )
+            ],
+        )
+
+    monkeypatch.setattr("app.api.scan_gmail_bids", fake_scan_gmail)
+    app = FastAPI()
+    app.include_router(create_bid_router(lambda: repository))
+
+    response = TestClient(app).post("/api/scans/gmail")
+
+    assert response.status_code == 200
+    assert response.json()["total_records"] == 1
+    assert response.json()["outcomes"][0]["platform"] == "Gmail"
+    assert repository.list_bids(platform="Gmail")[0]["bid_id"] == "message-42"

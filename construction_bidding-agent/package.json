@@ -32,12 +32,25 @@
     "combine:bids": "node scripts/combine-bids.mjs",
     "clickup:push": "node --env-file=.env scripts/push-clickup-tasks.mjs",
     "clickup:push:dry-run": "node --env-file=.env scripts/push-clickup-tasks.mjs --dry-run",
+    "clickup:update-existing": "node --env-file=.env scripts/push-clickup-tasks.mjs --update-existing --update-all-existing --only-existing",
+    "scraper:report": "node --env-file=.env scripts/report-scraper-operations.mjs",
+    "targets:reconcile": "node scripts/reconcile-target-entities.mjs",
+    "targets:verify-batch": "node scripts/verify-batch-ownership.mjs",
+    "scraper:notify": "node --env-file=.env scripts/report-scraper-operations.mjs --send",
+    "scraper:daily": "node --env-file=.env scripts/run-daily-scraper.mjs",
+    "scraper:daily:force": "node --env-file=.env scripts/run-daily-scraper.mjs --force",
+    "publication:build": "node scripts/build-publication-run.mjs",
+    "publish:bids": "node --env-file=.env scripts/publish-scrape-run.mjs",
+    "scrape-and-publish": "node --env-file=.env scripts/run-and-publish.mjs",
+    "supabase:migrate-sqlite": ".venv/bin/python scripts/migrate_sqlite_to_supabase.py",
     "sync:sheet": "npm run scrape:sites && npm run scrape:cloudflare && npm run scrape:bids && npm run combine:bids && npm run normalize:bids && npm run sheet:requests && npm run sheet:push",
     "sync:clickup": "npm run scrape:sites && npm run scrape:cloudflare && npm run scrape:bids && npm run combine:bids && npm run clickup:push",
     "sheet:site-tabs": "node --env-file=.env scripts/push-site-tabs.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.54.0"
+    "@playwright/test": "^1.54.0",
+    "supabase": "^2.113.0",
+    "vercel": "^58.9.1"
   },
   "dependencies": {
     "googleapis": "^173.0.0"

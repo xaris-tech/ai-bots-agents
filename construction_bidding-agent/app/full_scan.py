@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from app.bid_models import BidInput, ScanOutcome, ScanProgress
+from app.gmail_source import scan_gmail_bids
+from app.repository import BidRepository
 from app.runtime import get_repository
 from app.sheet_sync import PROJECT_ROOT
 
@@ -139,14 +141,25 @@ def get_full_scan_progress() -> ScanProgress:
     return _progress
 
 
+async def _scan_gmail_unit(repository: BidRepository) -> ScanOutcome:
+    result = await scan_gmail_bids()
+    stored = repository.record_portal_run(result)
+    return ScanOutcome(
+        platform="Gmail",
+        status=str(stored["status"]),
+        record_count=int(stored["record_count"]),
+        warning=str(stored["warning"] or ""),
+    )
+
+
 async def _run_full_scan() -> None:
     global _progress
     TMP_DIR.mkdir(parents=True, exist_ok=True)
     units = _build_units()
     _progress = ScanProgress(
         running=True,
-        total_units=len(units),
-        logs=[f"Starting full scan across {len(units)} sites/portals"],
+        total_units=len(units) + 1,
+        logs=[f"Starting full scan across {len(units)} sites/portals plus Gmail"],
     )
     repository = get_repository()
     platform_runs: dict[str, int] = {}
@@ -185,6 +198,16 @@ async def _run_full_scan() -> None:
                 f"[{_progress.completed_units}/{_progress.total_units}] {unit.label}: {unit_count} records"
                 + (f" - {warning}" if warning else "")
             )
+
+        gmail_outcome = await _scan_gmail_unit(repository)
+        _progress.completed_units += 1
+        _progress.total_ingested += gmail_outcome.record_count
+        _progress.outcomes.append(gmail_outcome)
+        _progress.logs.append(
+            f"[{_progress.completed_units}/{_progress.total_units}] Gmail: "
+            f"{gmail_outcome.record_count} records"
+            + (f" - {gmail_outcome.warning}" if gmail_outcome.warning else "")
+        )
 
         for platform, run_id in platform_runs.items():
             record_count = platform_counts.get(platform, 0)

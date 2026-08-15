@@ -196,3 +196,17 @@ list (id `901114103788`, hardcoded in `scripts/push-clickup-tasks.mjs`) in the
 `config/clickup-structure.json` reflects reality; it describes an earlier plan
 that was never built, and the two-list split it/older docs mention was
 consolidated into the one Prospects board.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs are tracked as local Markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The default five-role triage vocabulary is used. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Domain documentation uses the single-context layout. See `docs/agents/domain.md`.

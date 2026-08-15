@@ -1,4 +1,6 @@
 import { collectBidCards, ensureLoggedIn, writeDebugSnapshot } from "./common.mjs";
+import { classifyDescriptionQuality, cleanDescription } from "../description-quality.mjs";
+import { matchesClickUpKeywords } from "../keywords.mjs";
 
 export async function scrapeIonWave(page, portal) {
   if (process.env.IONWAVE_USERNAME && process.env.IONWAVE_PASSWORD) {
@@ -22,6 +24,7 @@ export async function scrapeIonWave(page, portal) {
       "[class*='bid' i]"
     ]
   });
+  await enrichIonWaveBidDescriptions(page, bids);
 
   const debugText = process.env.DEBUG_SCRAPE ? await writeDebugSnapshot(page, "IonWave") : "";
   return { platform: "IonWave", bids, debugText };
@@ -135,6 +138,9 @@ async function extractIonWaveTable(page, section = {}) {
       documentsUrl: absoluteUrl(row.link, page.url()),
       estimatedValue: "",
       description: joined,
+      descriptionQuality: "metadata",
+      descriptionSource: "listing-grid",
+      descriptionSourceUrl: absoluteUrl(row.link, page.url()),
       scrapedAt: new Date().toISOString()
     });
   }
@@ -187,6 +193,46 @@ function toIsoDate(value) {
 function absoluteUrl(href, baseUrl) {
   if (!href || href.startsWith("javascript:")) return baseUrl;
   return new URL(href, baseUrl).toString();
+}
+
+export function chooseIonWaveDetailDescription(values) {
+  return values
+    .map(cleanDescription)
+    .filter((value) => value.length >= 30)
+    .sort((left, right) => right.length - left.length)[0] || "";
+}
+
+export async function enrichIonWaveBidDescriptions(page, bids, options = {}) {
+  const maxDetails = Number(options.maxDetails ?? process.env.IONWAVE_DETAIL_ENRICH_MAX ?? 25);
+  let attempted = 0;
+
+  for (const bid of bids) {
+    if (attempted >= maxDetails) break;
+    if (bid.descriptionQuality !== "metadata") continue;
+    if (!/\/VendorResponse\/Bid\/VResponseEvent\.aspx/i.test(bid.bidUrl || "")) continue;
+    if (!matchesClickUpKeywords(`${bid.title ?? ""} ${bid.description ?? ""}`)) continue;
+    attempted += 1;
+
+    try {
+      await gotoWithRetry(page, bid.bidUrl);
+      await settle(page);
+      if (/VendorLogin\.aspx/i.test(page.url())) break;
+      const values = await Promise.all([
+        page.locator("#ctl00_mainContent_ctlTabStrip_lblDescription").innerText({ timeout: 5000 }).catch(() => ""),
+        page.locator("#ctl00_mainContent_lblNotes").innerText({ timeout: 5000 }).catch(() => "")
+      ]);
+      const description = chooseIonWaveDetailDescription(values);
+      if (!description) continue;
+      bid.description = description;
+      bid.descriptionQuality = classifyDescriptionQuality(description);
+      bid.descriptionSource = "detail-page";
+      bid.descriptionSourceUrl = bid.bidUrl;
+    } catch {
+      // Keep the honest listing metadata when an individual detail page fails.
+    }
+  }
+
+  return bids;
 }
 
 async function ionWaveGridSignature(page, tableId) {
@@ -343,7 +389,8 @@ export async function scrapeIonWaveSite(page, site) {
   const rows = await page.locator("table tr").evaluateAll((items) => items.map((row) => ({
     cells: [...row.querySelectorAll("th, td")]
       .map((cell) => cell.innerText.replace(/\s+/g, " ").trim())
-      .filter(Boolean)
+      .filter(Boolean),
+    href: row.querySelector("a[href*='VResponseEvent'], a[href*='SourcingEvent']")?.href || ""
   }))).catch(() => []);
 
   const bids = normalizeIonWaveSiteRows(rows, site);
@@ -383,10 +430,13 @@ export function normalizeIonWaveSiteRows(rows, site, scrapedAt = new Date().toIS
       agency: site.agency,
       location: site.location,
       dueDate,
-      bidUrl: site.url,
-      documentsUrl: site.url,
+      bidUrl: absoluteUrl(row.href, site.url),
+      documentsUrl: absoluteUrl(row.href, site.url),
       estimatedValue: "",
       description: joined,
+      descriptionQuality: "metadata",
+      descriptionSource: "listing-grid",
+      descriptionSourceUrl: absoluteUrl(row.href, site.url),
       scrapedAt
     });
   }

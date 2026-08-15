@@ -1,3 +1,6 @@
+import { classifyClickUpMatch } from "./keywords.mjs";
+import { hasUsableDescription } from "./description-quality.mjs";
+
 export const pursuitChecklist = [
   "Review bid documents",
   "Confirm scope fit",
@@ -11,33 +14,8 @@ export const pursuitChecklist = [
   "Mark as submitted"
 ];
 
-const aggregateTerms = [
-  "aggregate",
-  "aggregates",
-  "stone",
-  "gravel",
-  "sand",
-  "asphalt",
-  "base material",
-  "riprap"
-];
-
-const constructionTerms = [
-  "construction",
-  "road",
-  "bridge",
-  "site work",
-  "concrete",
-  "drainage",
-  "utility",
-  "earthwork"
-];
-
 export function categorizeBid(bid) {
-  const text = `${bid.title ?? ""} ${bid.description ?? ""}`.toLowerCase();
-  if (aggregateTerms.some((term) => text.includes(term))) return "Aggregates";
-  if (constructionTerms.some((term) => text.includes(term))) return "Construction";
-  return "Other";
+  return classifyClickUpMatch(`${bid.title ?? ""} ${bid.description ?? ""}`) || "Other";
 }
 
 export function dedupeKey(bid) {
@@ -76,24 +54,73 @@ export function toClickUpTask(bid, now = new Date()) {
 
   return {
     name: `${bid.platform}: ${bid.title}`,
-    markdown_description: [
-      `**Source Platform:** ${bid.platform}`,
-      `**Category:** ${category}`,
-      `**Agency / Buyer:** ${bid.agency || ""}`,
-      `**Project Name:** ${bid.title || ""}`,
-      `**Location:** ${bid.location || ""}`,
-      `**Due Date:** ${bid.dueDate || ""}`,
-      `**Bid URL:** ${bid.bidUrl || ""}`,
-      `**Documents URL / Drive Folder:** ${bid.documentsUrl || ""}`,
-      `**Estimated Value:** ${bid.estimatedValue || ""}`,
-      `**Fit Score:** ${fitScore}`,
-      `**CEO Decision:** Pending`,
-      `**Last Checked At:** ${now.toISOString()}`
-    ].join("\n"),
+    markdown_description: formatClickUpDescription(bid, category),
     due_date: bid.dueDate,
     priority: fitScore >= 80 ? "high" : fitScore >= 55 ? "normal" : "low",
     tags: [bid.platform, category].filter(Boolean)
   };
+}
+
+export function formatClickUpDescription(bid, category = categorizeBid(bid)) {
+  const details = summarizeBidDetails(
+    bid.title,
+    hasUsableDescription(bid) ? bid.description : ""
+  );
+  const title = String(bid.title || "").replace(/\s+/g, " ").trim();
+  const hasDescriptionHeading = details.what !== "N/A" && details.what !== title;
+  const brief = details.scope === "N/A"
+    ? ""
+    : `${hasDescriptionHeading ? `${details.what}: ` : ""}${details.scope}`;
+
+  return [
+    `**Source:** ${bid.platform || "N/A"}`,
+    `**Category:** ${category || "Other"}`,
+    "",
+    `## ${bid.title || "Untitled project"}`,
+    "",
+    brief || "No project description was provided by the source.",
+    "",
+    `**Location:** ${bid.location || "N/A"}`,
+    `**Due Date:** ${bid.dueDate || "N/A"}`,
+    `**URL:** ${specificBidUrl(bid)}`
+  ].join("\n");
+}
+
+export function specificBidUrl(bid) {
+  const bidUrl = String(bid.bidUrl || "").trim();
+  const documentsUrl = String(bid.documentsUrl || "").trim();
+  if (documentsUrl && (!bidUrl || isListingUrl(bidUrl))) return documentsUrl;
+  return bidUrl || documentsUrl || "N/A";
+}
+
+function isListingUrl(value) {
+  try {
+    const path = new URL(value).pathname.replace(/\/$/, "").toLowerCase();
+    return /\/(?:sourcingevents\.aspx|bid-postings|bids-proposals|bids)$/.test(path);
+  } catch {
+    return false;
+  }
+}
+
+export function summarizeBidDetails(title, description) {
+  const meaningful = String(description ?? "")
+    .split(/\s*\|\s*|[\r\n]+/)
+    .map((segment) => segment.replace(/\s+/g, " ").trim())
+    .filter((segment) => segment
+      && !/^notice (?:of|to) bid(?:ders)?$/i.test(segment)
+      && !/\baccepting sealed bids\b.*\b(?:the )?following\b/i.test(segment));
+  const heading = meaningful.find((segment) => segment.endsWith(":") && segment.length <= 120);
+  const what = (heading ? heading.slice(0, -1).trim() : String(title ?? "").replace(/\s+/g, " ").trim()) || "N/A";
+  const scopeText = meaningful
+    .filter((segment) => segment.replace(/:$/, "").trim() !== (heading ?? "").replace(/:$/, "").trim())
+    .join(" ")
+    .trim();
+  const scope = !scopeText
+    ? "N/A"
+    : scopeText.length <= 2000
+      ? scopeText
+      : `${scopeText.slice(0, 1999).trimEnd()}…`;
+  return { what: what.slice(0, 200), scope };
 }
 
 function scoreDueDate(value, now) {

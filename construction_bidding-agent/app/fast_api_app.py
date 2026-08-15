@@ -26,7 +26,8 @@ from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
 from app.auth import require_auth
 from app.bid_models import ChatRequest
-from app.runtime import get_repository
+from app.publisher import create_publisher_router
+from app.runtime import get_bid_reader, get_publisher_store, get_repository
 
 load_dotenv()
 if os.getenv("ENABLE_CLOUD_TELEMETRY", "false").lower() == "true":
@@ -49,7 +50,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(create_bid_router(get_repository))
+app.include_router(create_bid_router(get_repository, get_bid_reader))
+app.include_router(create_publisher_router(get_publisher_store))
 
 
 @app.get("/healthz")

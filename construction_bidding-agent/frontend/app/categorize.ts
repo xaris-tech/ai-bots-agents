@@ -10,16 +10,20 @@ export type BidCategory = "aggregates" | "general" | "other";
 
 const GENERAL_CONSTRUCTION_KEYWORDS = [
   "concrete",
-  "sitework", "excavation", "grading", "drainage", "stormwater",
+  "sitework", "excavation", "grading", "drainage",
   "renovation", "remodeling", "construction", "building improvements",
-  "general contractor", "joc", "job order contracting",
-  "foundation", "structural concrete", "masonry", "steel erection",
-  "parking lot", "landscaping", "fencing", "accessibility", "ada improvements", "ada",
-  "bridge", "culvert", "paving", "resurfacing", "reconstruction", "rehabilitation",
-  "water main", "waterline", "water line", "sewer", "wastewater",
-  "lift station", "pump station", "transmission main", "levee", "sidewalk",
-  "traffic signal", "roadway", "improvements", "flood control",
-  "demolition", "abatement", "widening",
+  "general contractor", "general contracting", "joc", "job order contracting",
+  "foundation", "structural concrete", "structural steel", "masonry", "steel erection",
+  "framing", "carpentry", "parking lot", "fencing", "accessibility", "ada improvements", "ada",
+  "reconstruction", "rehabilitation", "sidewalk", "roadway", "improvements",
+  "demolition", "abatement", "roofing", "window", "glazing", "exterior finishes",
+  "stucco", "eifs", "metal panel", "waterproofing", "sealant", "electrical",
+  "plumbing", "hvac", "fire protection", "sprinkler", "low voltage", "low-voltage",
+  "data comm", "data-comm", "drywall", "painting", "flooring", "tile", "carpet",
+  "vct", "epoxy", "ceiling", "act grid", "millwork", "cabinetry", "door", "frame",
+  "hardware", "fire alarm", "elevator", "signage", "insulation", "glass",
+  "storefront system", "concrete flatwork", "final cleaning", "permitting",
+  "inspections coordination",
 ];
 
 const AGGREGATE_KEYWORDS = [
@@ -36,10 +40,26 @@ const AGGREGATE_KEYWORDS = [
   "asphalt", "caliche",
 ];
 
+const CLICKUP_SCOPE_EXCLUDE_KEYWORDS = [
+  "stormwater", "landscaping", "culvert", "resurfacing", "paving",
+  "sewer", "main line", "pump station", "wastewater", "wastwater", "lift",
+  "transmission main", "levee", "flood control", "traffic signal",
+  "widening", "bridge",
+];
+
+// Professional-services solicitations can mention construction scopes without
+// representing work Cortex self-performs. This matches the deployed Python
+// backend and the canonical JavaScript ClickUp filter.
+const CLICKUP_EXCLUDE_KEYWORDS = [
+  "construction management", "construction manager", "manager at risk", "cmar",
+  "inspection services", "engineering services", "architectural services",
+  "design services", "consulting services",
+];
+
 // An aggregate-material bid that ALSO uses one of these repair/install verbs is
 // a construction job that merely mentions a material — General Construction wins.
 const CONSTRUCTION_CONTEXT_KEYWORDS = [
-  "repair", "repairs", "rehabilitation", "placement", "demolition", "dredging",
+  "repair", "repairs", "replacement", "rehabilitation", "placement", "demolition", "dredging",
 ];
 
 function buildKeywordPattern(keywords: string[]): RegExp {
@@ -55,13 +75,18 @@ function buildKeywordPattern(keywords: string[]): RegExp {
 const generalConstructionPattern = buildKeywordPattern(GENERAL_CONSTRUCTION_KEYWORDS);
 const aggregatePattern = buildKeywordPattern(AGGREGATE_KEYWORDS);
 const constructionContextPattern = buildKeywordPattern(CONSTRUCTION_CONTEXT_KEYWORDS);
+const clickUpScopeExcludePattern = buildKeywordPattern(CLICKUP_SCOPE_EXCLUDE_KEYWORDS);
+const clickUpExcludePattern = buildKeywordPattern(CLICKUP_EXCLUDE_KEYWORDS);
 
 export function categorizeBid(title: string, description = ""): BidCategory {
   const text = `${title ?? ""} ${description ?? ""}`;
+  if (clickUpScopeExcludePattern.test(text)) return "other";
   const isAggregateMaterial = aggregatePattern.test(text);
   const isConstructionJob = isAggregateMaterial && constructionContextPattern.test(text);
   if (isAggregateMaterial && !isConstructionJob) return "aggregates";
-  if (isConstructionJob || generalConstructionPattern.test(text)) return "general";
+  if (isConstructionJob || (generalConstructionPattern.test(text) && !clickUpExcludePattern.test(text))) {
+    return "general";
+  }
   return "other";
 }
 

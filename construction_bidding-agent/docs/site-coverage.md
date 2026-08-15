@@ -1,6 +1,6 @@
 # Site Coverage
 
-**Last updated:** July 15, 2026
+**Last updated:** August 4, 2026
 
 > **2026-07-25 note:** counts in this file are stale. The registry is now **81
 > site profiles (77 enabled)** across 8 platforms; latest run ~35 healthy / 7
@@ -9,6 +9,15 @@
 > `npm run scrape:cloudflare`. See **`docs/scraper-fixes-2026-07.md`** for the
 > current state and the per-site remaining-failure breakdown; the tables below
 > remain the platform-by-platform reference.
+
+> **2026-08-04 target-profile note:** the registry now has **99 profiles (93
+> enabled)**. The central DFW wave added Euless and Colleyville as direct
+> real-Chrome sources and identified Bedford's official, currently blocked,
+> CivicEngage fallback. Cedar Hill is explicitly owned by the verified
+> DemandStar batch feed; the remaining no-listing cities are explicit manual
+> dispositions in `config/target-entities.json`. The northwestern outer-market
+> wave added Jacksboro, Wichita Falls, Jack County, and Palo Pinto County as
+> direct profiles, with Young County explicitly blocked on Public Purchase.
 
 Single source of truth for scraper coverage: what's configured, what's live,
 what's blocked and why, the dedupe history, and the architecture behind it.
@@ -167,12 +176,19 @@ an empty page.
 | Mineral Wells | Additional | [link](https://www.mineralwellstx.gov/bids.aspx) | CHECKED | Site profile `mineral-wells-tx`; parses, zero open bids |
 | Brownwood | Additional | [link](https://www.brownwoodtexas.gov/Bids.aspx) | CHECKED | Site profile `brownwood-tx`; parses, zero open bids |
 | Snyder | Additional | [link](https://www.snydertx.gov/Bids.aspx) | CHECKED | Site profile `snyder-tx`; parses, zero open bids |
-| Benbrook | Main | [link](https://www.benbrook-tx.gov/) | TODO | Resolve canonical URL and add profile |
+| Benbrook | Main | [link](https://www.benbrook-tx.gov/Bids.aspx) | CHECKED | Site profile `benbrook-tx`; official CivicEngage listing verified empty |
+| Justin | Main | [link](https://www.cityofjustin.com/Bids.aspx) | CHECKED | Site profile `justin-tx`; official CivicEngage listing verified empty |
+| Bedford | Main | [link](https://bedfordtx.gov/Bids.aspx) | BLOCKED | Official fallback identified and profile `bedford-tx` retained disabled. Headless and unattended real-Chrome runs terminate during CivicPlus load; DemandStar has no current exact Bedford attribution. |
+| Jacksboro | Main | [link](https://www.cityofjacksboro.com/Bids.aspx) | CHECKED | Profile `jacksboro-tx`; official listing verified empty through unattended real Chrome after headless CivicPlus termination. |
+| Wichita Falls | Main | [link](https://www.wichitafallstx.gov/bids.aspx) | LIVE | Profile `wichita-falls-tx`; official Current Bids listing returned 3 open bids through unattended real Chrome. |
 | Longview | Additional | [link](https://www.longviewtexas.gov/Bids.aspx) | TODO | Open bid rows and attachments |
 | McLennan County | Additional | [link](https://www.mclennan.gov/Bids.aspx) | TODO | Open bid rows, details and attachments |
-| Killeen | Additional | [link](https://www.killeentexas.gov/414/Purchasing) | TODO | Open purchasing bids and documents |
-| Pflugerville | Additional | [link](https://www.pflugervilletx.gov/899/BidsRFQs) | TODO | Open bids/RFQs, details and attachments |
-| Boerne | Additional | [link](https://www.kendallcountytx.gov/Bids.aspx) | TODO | Confirm city vs. county source; scrape relevant open bids |
+| Killeen | Additional | [link](https://www.killeentexas.gov/414/Purchasing) | BLOCKED | Official page says OpenGov is the one location for all city bids; current solicitations require registration and the portal returns 403 unattended |
+| Pflugerville | Additional | [link](https://www.pflugervilletx.gov/899/BidsRFQs) | CHECKED | Profile `pflugerville-tx`; official Bids/RFQs index live-verified empty |
+| Boerne | Additional | [link](https://www.ci.boerne.tx.us/bids.aspx) | CHECKED | Profile `boerne-tx`; city-specific listing replaces Kendall County alias; unattended real Chrome verified empty |
+| Cedar Park | Additional | [link](https://www.cedarparktexas.gov/bids.aspx) | LIVE | Profile `cedar-park-tx`; city-specific consolidated listing returned 6 open bids through unattended real Chrome |
+| Lockhart | Additional | [link](https://www.cityoflockhart.gov/Bids.aspx) | LIVE | Profile `lockhart-tx`; city-specific listing replaces Caldwell County alias and returned 6 open bids through unattended real Chrome |
+| Universal City | Additional | [link](https://universalcitytexas.gov/Bids.aspx) | CHECKED | Profiles `universal-city-tx` and `universal-city-rfps-tx` cover both official city listings; both verified empty |
 | Pantego | Main | [link](https://www.townofpantego.com/bids) | MANUAL | `/bids` page is a soft 404; notices run only in the Commercial Recorder newspaper. Profile disabled with this reason. |
 
 Irving (`irving-tx`) is CivicEngage-labeled in the original workbook but
@@ -187,20 +203,21 @@ without login and attributes results to the site profile.
 | --- | --- | --- | --- | --- |
 | Fort Worth | Main | [link](https://fortworthtexas.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Open City of Fort Worth projects and documents |
 | Southlake | Main | [link](https://southlake.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Site profile `southlake-tx`; 1 open bid |
-| Williamson County | Main+Additional | [link](https://wilco.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Site profile `williamson-county-tx`; 5 open bids; canonical feed for the Leander and Cedar Park aliases |
+| Williamson County | Main+Additional | [link](https://wilco.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Site profile `williamson-county-tx`; county source only—city attribution is handled independently |
 | Burleson | Main | [link](https://burlesontx.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Site profile `burleson-tx`; 2 open bids |
 | Lewisville | Main | [link](https://cityoflewisville.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Open City of Lewisville projects and documents |
 | Denton County | Main | [link](https://dentoncounty.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Open county projects and documents |
-| Johnson County | Main | [link](https://johnsoncountytx.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Open county projects and documents |
+| Johnson County | Main | [link](https://johnsoncountytx.bonfirehub.com/portal/?tab=openOpportunities) | LIVE (via central feed) | Explicit Bonfire batch owner; exact verifier found 1 retained county-attributed listing. The official public feed was independently checked 2026-08-04 and currently has zero open projects, so no duplicate direct profile is enabled. |
 | Round Rock | Additional | [link](https://roundrocktexas.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Site profile `round-rock-tx`; 3 open bids |
 | Temple | Additional | [link](https://templetx.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Site profile `temple-tx`; 12 open bids (after the Bonfire rate-limit window cleared) |
 | Smith County | Additional | [link](https://smithcounty.bonfirehub.com/portal/?tab=openOpportunities) | CHECKED | Site profile `smith-county-tx`; feed live, zero open bids |
 | Parker County | Main | [link](https://parkercountytx.bonfirehub.com/portal/?tab=openOpportunities) | CHECKED | Public portal seeded; verify when open bids appear |
 | Frisco | Main | [link](https://friscotexas.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Site profile `frisco-tx` added 2026-07-15 (was FAMILY); 1 open opportunity (Teel Parkway Parking Addition) |
+| Leander | Additional | [link](https://leandertx.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Profile `leander-tx`; official City Bonfire returned 1 open project and replaces Williamson County alias |
+| Schertz | Additional | [link](https://schertz.bonfirehub.com/portal/?tab=openOpportunities) | LIVE | Profile `schertz-tx`; official city portal returned 1 open project |
 
-Leander and Cedar Park (Additional tab) currently alias to the Williamson
-County feed rather than having their own profile — treat as locality tags on
-one source unless an official city-specific feed is confirmed.
+Leander and Cedar Park use city-specific official sources. Williamson County
+is not accepted as a geographic alias because it cannot prove city attribution.
 
 ### IonWave (8 — 4 configured site profiles LIVE/CHECKED, rest FAMILY/deferred)
 
@@ -214,7 +231,7 @@ one source unless an official city-specific feed is confirmed.
 | Flower Mound | Main | [link](https://flower-mound.ionwave.net/Login.aspx) | LIVE | Same story as Keller — site profile `flower-mound-tx`; 2 open bids (`2026-101-A Addendum 2`, `2026-95-A Addendum 3`) |
 | Watauga | Main | [link](https://cityofwatauga.ionwave.net/SourcingEvents.aspx?SourceType=1) | CHECKED | Site profile `watauga-tx`; zero open events currently |
 | Arlington | Main | [link](https://arlington-tx.ionwave.net/Login.aspx) | LIVE (via central feed) | Attributed via the central authenticated IonWave feed, not a per-site profile |
-| Grapevine | Main | [link](https://gpvine.ionwave.net/Login.aspx) | LIVE (via central feed) | Attributed via the central authenticated IonWave feed |
+| Grapevine | Main | [link](https://gpvine.ionwave.net/SourcingEvents.aspx?SourceType=1) | LIVE (via central feed) | Explicit IonWave batch owner; exact verifier found 2 listings, matching the same 2 projects independently present in DemandStar. Direct official portal audit on 2026-08-04 found zero currently open events, so no duplicate profile is enabled. |
 | Tarrant County | Main | [link](https://tarrantcountytx.ionwave.net/SourcingEvents.aspx?SourceType=1) | LIVE (via central feed) | Attributed via the central authenticated IonWave feed |
 | College Station | Additional | [link](https://brazosbid.ionwave.net/SourcingEvents.aspx?SourceType=1) | LIVE | Site profile `college-station-tx` added 2026-07-15 (was FAMILY); BrazosBid portal, 10 open events |
 
@@ -226,7 +243,7 @@ profile is exactly what caused the DemandStar/IonWave duplicate bug (see
 profile for an IonWave agency once it's confirmed the central feed doesn't
 already carry it — as it turned out not to for Keller and Flower Mound.
 
-### Public Purchase (5 — all BLOCKED, network-level)
+### Public Purchase (6 — all BLOCKED, network-level)
 
 `src/scrapers/public-purchase.mjs` handles username/password login from env
 vars, agency-specific login pages, official `www1.publicpurchase.com` profiles,
@@ -241,6 +258,7 @@ retention.
 | Cleburne | Main | [link](https://www1.publicpurchase.com/gems/cleburne%2Ctx/buyer/public/publicInfo) | BLOCKED | Same network-level block |
 | Duncanville | Main | [link](https://www1.publicpurchase.com/gems/duncanville%2Ctx/buyer/public/publicInfo) | BLOCKED | Same network-level block |
 | Godley | Main | [link](https://www1.publicpurchase.com/gems/godley%2Ctx/buyer/public/publicInfo) | BLOCKED | Same network-level block |
+| Young County | Main | [link](https://www1.publicpurchase.com/gems/buyer/public/home?region=TX&syndicatedOrgId=22721) | BLOCKED | Official County of Young portal requires login; profile `young-county-tx` retained disabled under the same Public Purchase access/geo-block. |
 
 **Fix:** run the scraper from a US egress IP (VPN or US-hosted machine). No
 code change needed — credentials are already configured in `.env` and the
@@ -311,8 +329,8 @@ so it's a standalone `npm run scrape:bidnet-wide` for now pending a decision
 on making it part of the regular pipeline. Feeds `data/raw/bidnet-wide-bids.json`,
 already added to `scripts/combine-bids.mjs`'s source list.
 
-Lockhart (Additional) aliases to the Caldwell County BidNet feed — TODO to
-confirm whether it needs its own filter.
+Lockhart uses its city-specific CivicEngage listing. Caldwell County is not
+accepted as a geographic alias because it cannot prove city attribution.
 
 ### DemandStar (3 — batch feed, central authenticated account)
 
@@ -327,70 +345,73 @@ retained).
 | Bedford | Main | [link](https://network.demandstar.com/) | CHECKED | Central feed live; no Bedford bids in current results |
 | Plano | Main | [link](https://www.demandstar.com/app/suppliers/bids) | CHECKED | Central feed live; no Plano bids in current results |
 
-### CivCast, OpenGov, Infor/Lawson, Workday, BeaconBid (7 — all TODO)
+### CivCast, OpenGov, Infor/Lawson, Workday, BeaconBid
 
 No adapter built yet.
 
 | Entity | Tab | Platform | Link | Notes |
 | --- | --- | --- | --- | --- |
-| Colleyville | Main | CivCast | [link](https://www.civcastusa.com/bids?page=1&userSearch=Tarrant&timeInfo=0&isReversed=true&orderBy=BidDate) | Search Tarrant/Colleyville projects and official documents |
 | Pelican Bay | Additional | CivCast | [link](https://www.civcastusa.com/project/67240224f73b74d21c98ff3c/summary) | Project details, owner, bid date and plans |
-| Mount Pleasant | Additional | OpenGov | [link](https://procurement.opengov.com/portal/mpcity) | Public projects, dates, details and documents |
-| Kyle | Additional | OpenGov | [link](https://procurement.opengov.com/portal/cityofkyle) | Public projects, dates, details and documents |
-| Bexar County | Additional | Infor/Lawson | [link](https://bexarprod-lm01.cloud.infor.com:1442/lmscm/SourcingSupplier/list/SourcingEvent.OpenForBid?csk.CHP=LMPROC&csk.SupplierGroup=100&menu=EventManagement.BrowseOpenEvents) | Open sourcing events, event details and documents |
-| Universal City | Additional | Infor/Lawson (Bexar alias) | [link](https://bexarprod-lm01.cloud.infor.com:1442/lmscm/SourcingSupplier/list/SourcingEvent.OpenForBid?csk.CHP=LMPROC&csk.SupplierGroup=100&menu=EventManagement.BrowseOpenEvents) | Confirm buyer identity and filter shared portal events |
+| Mount Pleasant | Additional | OpenGov | [link](https://procurement.opengov.com/portal/mpcity) | BLOCKED — official city purchasing page confirms this as the complete portal, but unattended access receives a Cloudflare block; retained for daily human review |
+| Kyle | Additional | OpenGov | [link](https://procurement.opengov.com/portal/cityofkyle) | BLOCKED — official city RFPs & Bids destination returns 403 to unattended access; retained for human review |
+| Bexar County | Additional | Infor/Lawson + CivCast | [link](https://www.bexar.org/2377/Do-Business-with-Bexar-County) | BLOCKED — official coverage is split between registered Infor supplier access for goods/services/facilities/parks and a CivCast Public Works listing that returns 403 unattended; partial coverage is not ready |
+| Universal City | Additional | City CivicEngage + RFP page | [link](https://universalcitytexas.gov/Bids.aspx) | City-specific profiles replace the unproven Bexar Infor alias; dedupe preserves links from both official city sources |
 | New Braunfels | Additional | Workday Spend | [link](https://city-of-new-braunfels.public-portal.us.workdayspend.com/) | Public sourcing events, details and documents |
 | Kendall County | Additional | BeaconBid | [link](https://www.beaconbid.com/solicitations/kendall-county/open) | Open solicitations, dates, details and documents |
 
-### Official city/county page, no portal family (22 — all TODO)
+### Official city/county page, no portal family
 
 No reusable adapter — each needs a configurable HTML/PDF adapter or a
 one-off.
 
 | Entity | Tab | Link | Notes |
 | --- | --- | --- | --- |
-| Euless | Main | [link](https://www.eulesstx.gov/) | Resolve official URL and extract bids/quotes (Cityworks) |
+| Euless | Main | [link](https://www.eulesstx.gov/departments/purchasing-office/bids-and-quotes) | Site profile `euless-tx`; official page real-Chrome verified 4 open records; WAF returns 403 to the headless runner |
+| Colleyville | Main | [link](https://www.colleyville.com/government/bid-opportunities) | Site profile `colleyville-tx`; official city page replaces generic CivCast search and real-Chrome verified empty |
+| Jack County | Main | [link](https://www.jackcounty.org/pages/auditor.html) | Site profile `jack-county-tx`; official Auditor Competitive Bidding section verified empty through unattended real Chrome |
+| Palo Pinto County | Main | [link](https://www.co.palo-pinto.tx.us/page/PublicNotices) | Site profile `palo-pinto-county-tx`; official County Bids/RFP section returned 1 current undated RFP after stale month/year and Q&A artifacts were excluded |
 | Saginaw | Main | [link](https://www.ci.saginaw.tx.us/government/bid_opportunities.php) | Open opportunities and linked solicitation files |
 | Crowley | Main | [link](https://www.ci.crowley.tx.us/rfps) | RFP/RFQ listings, deadlines and PDFs |
 | Sansom Park | Main | [link](https://www.sansompark.org/2245/BIDS) | Open bids and linked documents |
-| Lake Worth | Main | [link](https://www.lakeworthtx.org/purchasing-and-risk-management/pages/bid-opportunities) | Purchasing bid opportunities and documents |
+| Lake Worth | Main | [link](https://www.lakeworthtx.org/Bids.aspx) | Site profile `lake-worth-tx`; replacement for the retired workbook URL; verified empty |
 | Westworth Village | Main | [link](https://www.cityofwestworth.com/bids) | Open bids, deadlines and attachments |
-| Blue Mound | Main | [link](https://bluemoundtexas.gov/services/doing-business-with-the-city-of-blue-mound/) | Determine whether online solicitations are published |
 | Dalworthington Gardens | Main | [link](https://www.cityofdwg.net/bidding-request-for-proposals) | Open RFP/bid postings and documents |
 | Aledo | Main | [link](https://www.aledotx.gov/finance-department/pages/bid-opportunities-city-auctions) | Open bid opportunities and documents |
 | Grand Prairie | Main | [link](https://www.gptx.org/Departments/Engineering/Engineering-Design-and-CIP-Projects/Bid-Proposals) | Engineering/CIP bid proposals and files |
-| Willow Park | Main | [link](https://www.willowparktx.gov/public-notices-rfps-rfqs) | Public notices, RFPs/RFQs and linked documents |
-| Weatherford | Main | [link](https://weatherfordtx.gov/654/Bid-Notices) | Bid notices, details and files |
-| Cresson | Main | [link](https://www.cressontx.org/rfps) | RFP/RFQ listings and documents |
-| Springtown | Main | [link](https://cityofspringtown.com/city-services/bid-invitations/) | Bid invitations, deadlines and documents |
+| Willow Park | Main | [link](https://www.willowparktx.gov/344/Public-Notices-RFPs-RFQs) | Site profile `willow-park-tx`; reviewed blank solicitation section verified empty |
+| Weatherford | Main | [link](https://weatherfordtx.gov/654/BidNotices) | Site profile `weatherford-tx`; site hook live-verified 2 open RFPs and amendment provenance |
+| Cresson | Main | [link](https://www.cressontx.org/rfps) | Site profile `cresson-tx`; official listing verified empty |
+| Springtown | Main | [link](https://cityofspringtown.com/city-services/bid-invitations/) | Site profile `springtown-tx`; reviewed blank Current Solicitations section verified empty |
 | Carrollton | Main | [link](https://www.cityofcarrollton.com/departments/departments-a-f/engineering/current-bids) | Engineering current bids and plan documents |
-| Joshua | Main | [link](https://www.cityofjoshuatx.us/open-records-request/pages/bids-proposals) | Bids/proposals, deadlines and PDFs |
-| Reno | Main | — | Resolve canonical Texas city URL; scrape RFP/RFQ postings |
-| Marfa | Main | — | Resolve canonical bid/RFP page and documents |
+| Joshua | Main | [link](https://www.cityofjoshuatx.us/open-records-request/pages/bids-proposals) | Site profile `joshua-tx`; real-Chrome site hook captures 2 items from the official Open Bid Requests section |
+| Reno | Main | [link](https://www.renotx.gov/) | MANUAL — human-approved as the Parker County city; official site has no complete online procurement index and required advertisements use the official city paper |
+| Marfa | Main | [link](https://www.cityofmarfa.com/rfps) | BLOCKED — official open/closed Bids and RFPs index confirmed; disabled after HTTP 403 in both headless and unattended real-Chrome runs on 2026-08-04 |
 | Vernon | Additional | [link](https://www.vernontx.gov/413/Bid-Solicitation) | Bid solicitations and linked files |
-| Tyler | Additional | [link](https://www.cityoftyler.org/government/departments/purchasing) | Open solicitations, dates, scope and documents |
+| Tyler | Additional | [link](https://www.cityoftyler.org/City-Government/Vendors-and-Bids) | MANUAL — notices are published in the newspaper and departments maintain separate vendor lists; the online RFQ/RFP section is not a complete citywide source |
 | Wichita County | Additional | [link](https://wichitacountytx.com/rfp/) | RFP/bid postings and linked files |
-| Clay County | Additional | [link](https://www.claycountytx.net/) | Locate procurement notices within the general site |
+| Clay County | Additional | [link](https://www.claycountytx.net/legal-notice) | Site profile `clay-county-tx`; official Legal Notices page live-verified empty |
 | Callahan County | Additional | [link](https://www.callahancounty.org/page/callahan.County.Bids) | Open county bids and documents |
 | Eastland County | Additional | [link](https://www.eastlandcountytexas.com/page/eastland.Bids) | Open county bids and documents |
 | Gregg County | Additional | [link](https://greggcounty.texas.gov/departments/purchasing/bids-addendums) | Bids, addenda and purchasing documents |
 | Bell County | Additional | [link](https://www.bellcountytx.com/purchasing/current_bids.php) | Current bids, details and documents |
-| Burnet County | Additional | [link](https://www.burnetcountytexas.org/page/auditor.purchasing) | Purchasing bids and linked files |
+| Burnet County | Additional | [link](https://www.burnetcountytexas.org/page/auditor.bids) | Site profile `burnet-county-tx`; official County Auditor current-bid index, live-verified empty after closed archive and past deadline filtering |
 | Bastrop County | Additional | [link](https://www.co.bastrop.tx.us/page/pur.bids) | Open bids and documents |
 | Milam County | Additional | [link](https://www.milamcounty.net/departments/public_notices_bid_proposals/index.php) | Bid/proposal notices and linked documents |
-| Blanco County | Additional | [link](https://blanco.municipalimpact.com/requests-for-bids-proposals-and-qualifications) | Requests for bids/proposals/qualifications and files |
-| Llano County | Additional | [link](https://www.co.llano.tx.us/) | Identify the canonical procurement page first |
+| Blanco County | Additional | [link](https://www.blancocountytexas.gov/) | MANUAL — official county site has no complete procurement list; workbook URL belongs to the City of Blanco and is rejected as the wrong entity |
+| Llano County | Additional | [link](https://www.llanocounty.gov/page/Public.Notices) | Site profile `llano-county-tx`; official Public Notices page live-verified empty |
 | Georgetown | Additional | [link](https://www.georgetowntexas.gov/government/finance_and_purchasing/doing_business_with_the_city/bid_opportunities.php) | Bid opportunities, dates and documents |
 | Austin | Additional | [link](https://financeonline.austintexas.gov/afo/account_services/solicitation/solicitations.cfm) | Open solicitations, commodity data and documents (Finance Online) |
 | San Antonio | Additional | [link](https://webapp1.sanantonio.gov/BidContractOpps/Default.aspx) | Bid/contract opportunities and documents (custom portal) |
 | Waco | Additional | [link](https://www.waco-texas.com/Home/Connect-with-Waco/Current-Bid-Opportunities) | Current bid opportunities and linked files |
-| Bryan | Additional | [link](https://www.bryantx.gov/purchasing-services/) | Purchasing opportunities and documents |
+| Bryan | Additional | [link](https://www.bryantx.gov/purchasing-services/) | BATCH-OWNED — city states all vendor bids use Brazos Valley Online Bidding; exact `City of Bryan` attribution verified in the central IonWave feed |
 | Belton | Additional | [link](https://www.beltontexas.gov/government/city_clerk/bid_postings/index.php) | Bid postings and linked files |
 | Coryell County | Additional | [link](https://www.coryellcounty.org/page/coryell.Bids.RFQ) | Open bids/RFQs and linked documents |
-| Wood County (public notices) | Additional | [link](https://www.mywoodcounty.com/page/public_notice_main) | Extract bid/RFP notices only, ignore unrelated notices |
-| Jones County (public notices) | Additional | [link](https://www.co.jones.tx.us/page/jones.PublicNotices.Estrays) | Extract only bid-related notices; ignore estray notices |
+| Wood County (public notices) | Additional | [link](https://www.mywoodcounty.com/page/public_notice_main) | Site profile `wood-county-tx`; official designated public-notice source live-verified empty |
+| Jones County (public notices) | Additional | [link](https://www.co.jones.tx.us/) | Site profile `jones-county-tx`; official homepage replaces the estray page and past bid deadlines are filtered; live-verified empty |
+| Wilbarger County | Additional | [link](https://www.co.wilbarger.tx.us/page/PublicNotices) | Site profile `wilbarger-county-tx`; official Public Notices calendar replaces BidOcean; live-verified empty |
+| Brown County | Additional | [link](https://www.browncountytx.gov/page/brown.PublicNotices) | Site profile `brown-county-tx`; official Public Notices page replaces TexasBids; live-verified empty |
 
-### Manual — no scrapeable source (4)
+### Manual — no scrapeable source
 
 MANUAL means the entity publishes no scrapeable online listing at all — no
 automation can exist. The registry keeps them visible so they're never
@@ -401,26 +422,31 @@ silently forgotten. These never count as scraper failures.
 | River Oaks | Main | No procurement page; workbook notes voicemail left, awaiting callback | Call/email the city; enter any verified bid by hand |
 | Everman | Main | Publishes legal notices in the Star-Telegram newspaper only | Check Star-Telegram legal notices or call 817-293-0525 ext. 314 |
 | Edgecliff Village | Main | No portal; existing relationship with the city | Confirm opportunities with the known contact (Joe Sloan) and enter manually |
-| Justin | Main | Missing URL entirely | Identify official procurement source |
+| Blue Mound | Main | Official city site exposes contacts and records but no complete current-bid listing | Contact the city and enter verified opportunities manually |
+| Farmers Branch | Main | Official purchasing page has no complete public solicitation list; GovCB is rejected as a third-party source | Contact Purchasing or check the authenticated vendor workflow manually |
+| Rhome | Main | Official city site has no complete current-bid list; TexasBids rejected | Contact the city and enter verified opportunities manually |
+| Bartonville | Main | Town Secretary publishes legal notices, but no complete procurement list; TexasBids rejected | Check official notices/contact the Town Secretary |
+| Graham | Main | Official site publishes occasional individual RFP documents but no complete current index | Contact City Purchasing and enter verified opportunities manually |
+| Graford | Main | No official complete online current-bid listing identified as of 2026-08-04 | Confirm directly with the city |
+| Bridgeport | Main | Official vendor page explicitly states purchasing is decentralized and there is no central bid list | Contact the relevant city department directly |
+| Reno | Main | Human-approved as the Parker County city; official site has no complete online procurement index | Check the official city paper/public notices or contact City Hall |
+| Pelican Bay | Main | Supplied CivCast URL is a one-off project; official city News has occasional bid notices but no complete enduring index | Check official News and contact the City Secretary |
+| Cross Timber | Main | Incorporated Johnson County town has no complete procurement index; InstantMarkets rejected | Confirm opportunities directly with the Town |
+| Tyler | Additional | Official page says notices are published in the newspaper and departments maintain separate vendor lists; no single online list is complete | Check the official page/newspaper and contact the relevant city department |
+| Blanco County | Additional | Official county site has no complete procurement listing; supplied City of Blanco URL is a different entity | Check county notices and contact the County Auditor/administration |
+| Harker Heights | Additional | Official site documents competitive purchasing but has no complete current-bid index; TexasBids is rejected | Contact City Finance and enter verified opportunities manually |
 
 (Pantego is also effectively manual — see the CivicEngage table above, where
 it's tracked with its disabled site profile.)
 
-### Aggregators needing an official source (5)
+### Aggregators needing an official source (0)
 
 REPLACE means the supplied URL is a search page or third-party aggregator, not
 an official source. Aggregators are discovery-only, never a production source.
 
-| Entity | Tab | Aggregator | Link | Notes |
-| --- | --- | --- | --- | --- |
-| Rhome | Main | TexasBids | [link](https://texasbids.net/government-agencies/wise/rhome-city-of-35311/) | Resolve to an official City of Rhome source |
-| Farmers Branch | Main | GovCB | [link](https://www.govcb.com/statebrowse/state.bids-Texas-City%20of%20Farmers%20Branch.htm) | Locate official buyer portal before production scraping |
-| Bartonville | Main | TexasBids | [link](https://texasbids.net/government-agencies/denton/bartonville-town-of-949162/) | Resolve to an official town source |
-| Cross Timber | Main | InstantMarkets | [link](https://www.instantmarkets.com/l/%22Cross_Timber,_Texas%22/t/rfp) | Identify exact entity and official procurement source |
-| Wilbarger County | Additional | BidOcean | [link](https://texas.bidocean.net/government-agencies/wilbarger/wilbarger-county-422006/) | Resolve to official county solicitations |
-| Brown County | Additional | TexasBids | [link](https://texasbids.net/government-agencies/brown/) | Resolve to official county solicitations |
-| Harker Heights | Additional | TexasBids | [link](https://www.texasbids.net/government-agencies/bell/harker-heights-city-of-556/) | Resolve to official city solicitations |
-| Schertz | Additional | Google search result | — | Find and store the official procurement portal URL |
+Cross Timber's InstantMarkets row was rejected after human review. The
+canonical entity is the incorporated Town of Cross Timber, retained as manual
+because its official site has no complete procurement index.
 
 ## Cloudflare Managed Challenge — Solved via Real Chrome
 

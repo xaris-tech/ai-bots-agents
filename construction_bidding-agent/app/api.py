@@ -18,9 +18,12 @@ from app.bid_models import (
     ScanSummary,
     SheetSyncSummary,
 )
+from app.clickup_cleanup import ClickUpCleanupError, cleanup_expired_clickup_tasks
 from app.clickup_sync import ClickUpSyncError, sync_bids_to_clickup
 from app.full_scan import get_full_scan_progress, start_full_scan
+from app.gmail_source import scan_gmail_bids
 from app.intake_workflow import execute_intake
+from app.operations_status import build_operations_status
 from app.repository import BidRepository
 from app.scoring import score_bid
 from app.sheet_sync import SheetSyncError, sync_bids_to_sheet
@@ -28,14 +31,22 @@ from app.site_monitor import build_site_monitor
 
 
 RepositoryProvider = Callable[[], BidRepository]
+BidReaderProvider = Callable[[], Any]
 
 
-def create_bid_router(repository_provider: RepositoryProvider) -> APIRouter:
+def create_bid_router(
+    repository_provider: RepositoryProvider,
+    bid_reader_provider: BidReaderProvider | None = None,
+) -> APIRouter:
     # Every /api route requires a verified, allowlisted Firebase user.
     router = APIRouter(prefix="/api", tags=["bid-copilot"], dependencies=[Depends(require_auth)])
 
     def get_repository() -> BidRepository:
         return repository_provider()
+
+    def get_bid_reader() -> Any:
+        provider = bid_reader_provider or repository_provider
+        return provider()
 
     @router.get("/health")
     def health() -> dict[str, str]:
@@ -43,7 +54,7 @@ def create_bid_router(repository_provider: RepositoryProvider) -> APIRouter:
 
     @router.get("/bids")
     def list_bids(
-        repository: Annotated[BidRepository, Depends(get_repository)],
+        repository: Annotated[Any, Depends(get_bid_reader)],
         platform: str | None = Query(default=None),
     ) -> list[dict[str, Any]]:
         profile = repository.get_company_profile()
@@ -63,13 +74,26 @@ def create_bid_router(repository_provider: RepositoryProvider) -> APIRouter:
             key=lambda item: (-item["score"]["total"], item["due_date"] or "9999"),
         )
 
+    @router.get("/publication-runs/latest")
+    def latest_publication_run(
+        repository: Annotated[Any, Depends(get_bid_reader)],
+    ) -> dict[str, Any] | None:
+        reader = getattr(repository, "latest_publication_run", None)
+        return reader() if reader else None
+
     @router.post("/bids/cleanup-expired")
-    def cleanup_expired_bids(
+    async def cleanup_expired_bids(
         repository: Annotated[BidRepository, Depends(get_repository)],
     ) -> CleanupSummary:
-        """Delete bids whose due_date has passed (already hidden from the
-        table; this just stops the SQLite store growing forever)."""
-        return CleanupSummary(deleted=repository.delete_expired_bids())
+        """Archive expired or duplicate ClickUp bid tasks, then remove expired local rows."""
+        try:
+            clickup_archived = await cleanup_expired_clickup_tasks()
+        except ClickUpCleanupError as error:
+            raise HTTPException(status_code=502, detail=str(error)) from error
+        return CleanupSummary(
+            deleted=repository.delete_expired_bids(),
+            clickup_archived=clickup_archived,
+        )
 
     @router.get("/profile")
     def get_profile(
@@ -88,6 +112,31 @@ def create_bid_router(repository_provider: RepositoryProvider) -> APIRouter:
     async def run_scan(request: ScanRequest) -> ScanSummary:
         return await execute_intake(request)
 
+    @router.post("/scans/gmail")
+    async def run_gmail_scan(
+        repository: Annotated[BidRepository, Depends(get_repository)],
+    ) -> ScanSummary:
+        result = await scan_gmail_bids()
+        stored = repository.record_portal_run(result)
+        warning = str(stored["warning"] or "")
+        succeeded = stored["status"] == "success"
+        return ScanSummary(
+            status="completed" if succeeded else "completed_with_warnings",
+            total_records=int(stored["record_count"]),
+            outcomes=[
+                {
+                    "platform": "Gmail",
+                    "status": str(stored["status"]),
+                    "record_count": int(stored["record_count"]),
+                    "warning": warning,
+                }
+            ],
+            logs=[
+                f"Gmail: {stored['status']} ({stored['record_count']} records)"
+                + (f" - {warning}" if warning else "")
+            ],
+        )
+
     @router.post("/scans/full")
     async def run_full_scan() -> ScanProgress:
         return start_full_scan()
@@ -99,6 +148,10 @@ def create_bid_router(repository_provider: RepositoryProvider) -> APIRouter:
     @router.get("/site-monitor")
     def site_monitor() -> dict[str, Any]:
         return build_site_monitor()
+
+    @router.get("/operations-status")
+    def operations_status() -> dict[str, Any]:
+        return build_operations_status()
 
     @router.post("/sync-sheet")
     async def sync_sheet() -> SheetSyncSummary:

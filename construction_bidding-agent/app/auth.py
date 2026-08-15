@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_ALLOWED = "ranjovidad@gmail.com,info@cortexconstruction.com"
 _bearer = HTTPBearer(auto_error=False)
-_firebase_ready = False
 
 
 def auth_enabled() -> bool:
@@ -37,25 +36,28 @@ def allowed_emails() -> set[str]:
     return {email.strip().lower() for email in raw.split(",") if email.strip()}
 
 
-def _ensure_firebase() -> None:
-    """Initialise the firebase-admin app once, for ID-token verification."""
-    global _firebase_ready
-    if _firebase_ready:
-        return
-    import firebase_admin
-    from firebase_admin import credentials
+def _verify_firebase_id_token(token: str) -> dict[str, object]:
+    """Verify Firebase signature/claims without requiring Google ADC."""
+    from google.auth.transport.requests import Request as GoogleRequest
+    from google.oauth2 import id_token as google_id_token
 
-    if not firebase_admin._apps:
-        cred_path = os.getenv("FIREBASE_CREDENTIALS") or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        project_id = os.getenv("FIREBASE_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
-        if cred_path and os.path.exists(cred_path):
-            firebase_admin.initialize_app(credentials.Certificate(cred_path))
-        elif project_id:
-            firebase_admin.initialize_app(options={"projectId": project_id})
-        else:
-            # Application Default Credentials (e.g. on Cloud Run).
-            firebase_admin.initialize_app()
-    _firebase_ready = True
+    project_id = os.getenv("FIREBASE_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
+    if not project_id:
+        raise RuntimeError("FIREBASE_PROJECT_ID is required")
+    decoded = dict(
+        google_id_token.verify_firebase_token(
+            token,
+            GoogleRequest(),
+            audience=project_id,
+        )
+    )
+    if decoded.get("iss") != f"https://securetoken.google.com/{project_id}":
+        raise ValueError("Invalid Firebase token issuer")
+    subject = str(decoded.get("sub") or "")
+    if not subject:
+        raise ValueError("Firebase token subject is missing")
+    decoded["uid"] = subject
+    return decoded
 
 
 async def require_auth(
@@ -72,11 +74,8 @@ async def require_auth(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    _ensure_firebase()
-    from firebase_admin import auth as firebase_auth
-
     try:
-        decoded = firebase_auth.verify_id_token(creds.credentials)
+        decoded = _verify_firebase_id_token(creds.credentials)
     except Exception as exc:  # invalid signature, expired, wrong audience, ...
         logger.warning("Rejected token: %s", exc)
         raise HTTPException(

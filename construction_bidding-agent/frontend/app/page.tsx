@@ -14,6 +14,7 @@ import {
   Globe,
   LoaderCircle,
   LogOut,
+  Mail,
   MessageSquareText,
   RefreshCw,
   ScrollText,
@@ -33,7 +34,8 @@ import { getIdToken, firebaseEnabled } from "./firebase";
 import { signOutUser } from "./AuthGate";
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-const PLATFORMS = ["All portals", "IonWave", "DemandStar", "Bonfire"];
+const DEPLOYED_MODE = process.env.NEXT_PUBLIC_DEPLOYED_MODE === "true";
+const SHOW_SCAN_CONTROLS = process.env.NEXT_PUBLIC_SHOW_SCAN_CONTROLS === "true" && !DEPLOYED_MODE;
 
 type Score = {
   total: number;
@@ -99,24 +101,13 @@ type ScanProgress = {
   error: string;
 };
 
-type SheetSyncSummary = {
-  status: "completed" | "completed_with_warnings" | "failed";
-  total_bids: number;
-  warnings: { platform: string; warning: string }[];
-  sheet_url: string;
-  error: string;
-  logs: string[];
-};
-
 type ClickUpSyncSummary = {
   status: "completed" | "failed";
   total_bids: number;
-  matched_aggregates: number;
-  matched_general_construction: number;
+  matched: number;
   created: number;
   skipped: number;
-  aggregates_list_url: string;
-  general_construction_list_url: string;
+  list_url: string;
   error: string;
   logs: string[];
 };
@@ -164,6 +155,32 @@ type SiteMonitor = {
   };
   platforms: { platform: string; total: number; healthy: number; warning: number; blocked: number; stale: number; empty: number; "never-run": number; disabled: number }[];
   sites: SiteView[];
+};
+
+type OperationsStatus = {
+  has_data: boolean;
+  generated_at: string | null;
+  status: string;
+  coverage: { ready?: number; total?: number; percent?: number };
+  coverage_by_tab: { tab: string; ready: number; total: number; percent: number }[];
+  dispositions: Record<string, number>;
+  onboarding_gap_count: number;
+  runtime: { total: number; passed: number; failed: number; verified_empty: number; audit_pass_rate: number };
+  listings: { captured: number; categories: Record<string, number> };
+  consolidation: { records: number; records_without_source_links: number; records_with_multiple_source_links: number };
+  pipeline_errors: string[];
+  failure_count: number;
+  registry_url: string;
+};
+
+type PublicationRun = {
+  run_id: string;
+  status: string;
+  finished_at: string;
+  bid_count: number;
+  publisher_id: string;
+  publisher_name: string;
+  entity_checks: { source_id: string; status: string; warning: string; record_count: number; retained_count: number }[];
 };
 
 const SITE_STATUS_LABEL: Record<SiteStatus, string> = {
@@ -245,22 +262,24 @@ export default function BidDesk() {
   const [bids, setBids] = useState<Bid[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [publicationRun, setPublicationRun] = useState<PublicationRun | null>(null);
   const [selectedKey, setSelectedKey] = useState("");
   const [query, setQuery] = useState("");
   const [platform, setPlatform] = useState("All portals");
   const [category, setCategory] = useState<BidCategory | "all">("all");
   const [expiry, setExpiry] = useState<ExpiryFilter>("all");
-  const [view, setView] = useState<"opportunities" | "approvals" | "sites">("opportunities");
+  const [view, setView] = useState<"opportunities" | "approvals" | "operations" | "sites">("opportunities");
   const [siteMonitor, setSiteMonitor] = useState<SiteMonitor | null>(null);
   const [loadingSites, setLoadingSites] = useState(false);
+  const [operationsStatus, setOperationsStatus] = useState<OperationsStatus | null>(null);
+  const [loadingOperations, setLoadingOperations] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [scanningEmail, setScanningEmail] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
-  const [syncingSheet, setSyncingSheet] = useState(false);
   const [syncingClickUp, setSyncingClickUp] = useState(false);
   const [cleaningUp, setCleaningUp] = useState(false);
   const [error, setError] = useState("");
-  const [syncResult, setSyncResult] = useState<SheetSyncSummary | null>(null);
   const [clickUpResult, setClickUpResult] = useState<ClickUpSyncSummary | null>(null);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -287,14 +306,16 @@ export default function BidDesk() {
   const load = useCallback(async () => {
     setError("");
     try {
-      const [bidData, profileData, actionData] = await Promise.all([
+      const [bidData, profileData, actionData, latestRun] = await Promise.all([
         api<Bid[]>("/api/bids"),
         api<Profile>("/api/profile"),
         api<Proposal[]>("/api/actions"),
+        api<PublicationRun | null>("/api/publication-runs/latest"),
       ]);
       setBids(bidData);
       setProfile(profileData);
       setProposals(actionData);
+      setPublicationRun(latestRun);
       setSelectedKey((current) => current || bidData[0]?.dedupe_key || "");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load bid data");
@@ -314,6 +335,17 @@ export default function BidDesk() {
     }
   }, []);
 
+  const loadOperationsStatus = useCallback(async () => {
+    setLoadingOperations(true);
+    try {
+      setOperationsStatus(await api<OperationsStatus>("/api/operations-status"));
+    } catch (operationsError) {
+      setError(operationsError instanceof Error ? operationsError.message : "Unable to load operations status");
+    } finally {
+      setLoadingOperations(false);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -321,6 +353,18 @@ export default function BidDesk() {
   useEffect(() => {
     if (view === "sites" && !siteMonitor) void loadSiteMonitor();
   }, [view, siteMonitor, loadSiteMonitor]);
+
+  useEffect(() => {
+    if (view === "operations" && !operationsStatus) void loadOperationsStatus();
+  }, [view, operationsStatus, loadOperationsStatus]);
+
+  const platforms = useMemo(
+    () => [
+      "All portals",
+      ...Array.from(new Set(bids.map((bid) => bid.platform).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    ],
+    [bids],
+  );
 
   const filtered = useMemo(() => {
     const term = query.toLowerCase().trim();
@@ -334,12 +378,17 @@ export default function BidDesk() {
   }, [bids, platform, category, expiry, query]);
 
   const selected = bids.find((bid) => bid.dedupe_key === selectedKey) ?? filtered[0];
-  const highFit = bids.filter((bid) => bid.score.label === "high").length;
-  const dueSoon = bids.filter((bid) => {
+  const highFit = filtered.filter((bid) => bid.score.label === "high").length;
+  const dueSoon = filtered.filter((bid) => {
     const days = daysUntil(bid.due_date);
     return days !== null && days >= 0 && days <= 14;
   }).length;
-  const pending = proposals.filter((item) => item.status === "pending").length;
+  const visibleKeys = new Set(filtered.map((bid) => bid.dedupe_key));
+  const pending = proposals.filter((item) => {
+    if (item.status !== "pending") return false;
+    const records = [...(item.payload.rows ?? []), ...(item.payload.tasks ?? [])];
+    return records.some((record) => visibleKeys.has(record.dedupe_key));
+  }).length;
 
   async function runScan() {
     setScanning(true);
@@ -376,6 +425,25 @@ export default function BidDesk() {
     }
   }
 
+  async function runEmailScan() {
+    setScanningEmail(true);
+    setError("");
+    try {
+      const result = await api<ScanSummary>("/api/scans/gmail", { method: "POST" });
+      appendLog("Scan Gmail", result.logs);
+      const outcome = result.outcomes[0];
+      if (result.status === "completed_with_warnings") {
+        setError(outcome?.warning || "Gmail scan completed with a warning");
+      } else {
+        await load();
+      }
+    } catch (scanError) {
+      setError(scanError instanceof Error ? scanError.message : "Gmail scan failed");
+    } finally {
+      setScanningEmail(false);
+    }
+  }
+
   async function syncClickUp() {
     setSyncingClickUp(true);
     setError("");
@@ -396,35 +464,16 @@ export default function BidDesk() {
     }
   }
 
-  async function syncSheet() {
-    setSyncingSheet(true);
-    setError("");
-    setSyncResult(null);
-    try {
-      const result = await api<SheetSyncSummary>("/api/sync-sheet", { method: "POST" });
-      setSyncResult(result);
-      appendLog("Sync sheet", result.logs);
-      if (result.status === "failed") {
-        setError(result.error || "Sheet sync failed");
-        return;
-      }
-      await load();
-      // Reuses the feed the sheet sync just scraped — no second scrape.
-      await syncClickUp();
-    } catch (syncError) {
-      setError(syncError instanceof Error ? syncError.message : "Sheet sync failed");
-    } finally {
-      setSyncingSheet(false);
-    }
-  }
-
   async function cleanupExpiredBids() {
-    if (!window.confirm("Permanently delete all bids past their deadline from the dashboard? This can't be undone.")) return;
+    if (!window.confirm("Archive overdue and duplicate tasks from Bid Opportunities → Prospects, then remove expired bids from the current dashboard? No other ClickUp space or list will be changed.")) return;
     setCleaningUp(true);
     setError("");
     try {
-      const result = await api<{ deleted: number }>("/api/bids/cleanup-expired", { method: "POST" });
-      appendLog("Clean up expired", [`Deleted ${result.deleted} expired bid${result.deleted === 1 ? "" : "s"}.`]);
+      const result = await api<{ deleted: number; clickup_archived: number }>("/api/bids/cleanup-expired", { method: "POST" });
+      appendLog("Clean up expired & duplicates", [
+        `Archived ${result.clickup_archived} overdue or duplicate ClickUp task${result.clickup_archived === 1 ? "" : "s"}.`,
+        `Deleted ${result.deleted} expired dashboard bid${result.deleted === 1 ? "" : "s"}.`,
+      ]);
       await load();
     } catch (cleanupError) {
       setError(cleanupError instanceof Error ? cleanupError.message : "Cleanup failed");
@@ -500,45 +549,50 @@ export default function BidDesk() {
           <button className={view === "approvals" ? "active" : ""} onClick={() => setView("approvals")}>
             Approvals {pending > 0 && <span className="nav-count">{pending}</span>}
           </button>
+          <button className={view === "operations" ? "active" : ""} onClick={() => setView("operations")}>
+            Operations
+          </button>
           <button className={view === "sites" ? "active" : ""} onClick={() => setView("sites")}>
             Site Monitor
           </button>
         </nav>
         <div className="topbar-actions">
-          <span className="system-status"><i /> Local</span>
+          <span className="system-status"><i /> {DEPLOYED_MODE ? "Online" : "Local"}</span>
           {firebaseEnabled && (
             <button className="signout-button" onClick={signOutUser} title="Sign out"><LogOut size={15} /></button>
           )}
           <button className="icon-button" title="Company profile" onClick={() => profileDialog.current?.showModal()}>
             <Settings2 size={18} />
           </button>
-          <button
+          {SHOW_SCAN_CONTROLS && <button
             className="primary-button"
             onClick={runScan}
-            disabled={scanning}
-            title="Scrape every configured site profile and batch portal (81 sites + 3 portals) one at a time, loading each into this table as soon as it's scraped. Takes several minutes."
+            disabled={scanning || scanningEmail}
+            title="Scan every configured website, batch portal, and the authorized Gmail bid inbox. Takes several minutes."
           >
             {scanning ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}
             {scanning
               ? scanProgress
                 ? `Scanning ${scanProgress.completed_units}/${scanProgress.total_units}`
                 : "Starting scan"
-              : "Scan portals"}
-          </button>
-          <button
+              : "Scan all sources"}
+          </button>}
+          {SHOW_SCAN_CONTROLS && <button
             className="secondary-button"
-            onClick={syncSheet}
-            disabled={syncingSheet || syncingClickUp}
-            title="Scrape every configured site and portal, push the combined results to the Google Sheet, then filter the same feed by keyword into the ClickUp Aggregates/General Construction lists"
+            onClick={runEmailScan}
+            disabled={scanningEmail || scanning}
+            title="Read recent bid notices from info.cortexconstruction@gmail.com without changing the mailbox"
           >
-            {syncingSheet || syncingClickUp ? <LoaderCircle className="spin" size={17} /> : <FileSpreadsheet size={17} />}
-            {syncingSheet ? "Syncing sheet" : syncingClickUp ? "Syncing ClickUp" : "Scrape + sync sheet"}
-          </button>
+            {scanningEmail ? <LoaderCircle className="spin" size={17} /> : <Mail size={17} />}
+            {scanningEmail ? "Scanning email" : "Scan email"}
+          </button>}
           <button
             className="secondary-button"
             onClick={syncClickUp}
-            disabled={syncingClickUp || syncingSheet}
-            title="Filter the already-scraped feed (data/raw/bids.json) by keyword and push to ClickUp, without scraping again"
+            disabled={syncingClickUp}
+            title={DEPLOYED_MODE
+              ? "Push matching current Supabase bids to ClickUp Prospects"
+              : "Filter the already-scraped feed and push matching bids to ClickUp Prospects"}
           >
             {syncingClickUp ? <LoaderCircle className="spin" size={17} /> : <SquareKanban size={17} />}
             {syncingClickUp ? "Syncing ClickUp" : "Sync ClickUp"}
@@ -547,10 +601,10 @@ export default function BidDesk() {
             className="secondary-button"
             onClick={cleanupExpiredBids}
             disabled={cleaningUp}
-            title="Permanently delete bids past their deadline from the dashboard's stored data (they're already hidden from this table)"
+            title="Archive overdue and duplicate tasks only from Bid Opportunities → Prospects"
           >
             {cleaningUp ? <LoaderCircle className="spin" size={17} /> : <Trash2 size={17} />}
-            {cleaningUp ? "Cleaning up" : "Clean up expired"}
+            {cleaningUp ? "Cleaning up" : "Clean up expired & duplicates"}
           </button>
           <button
             className="icon-button"
@@ -570,20 +624,23 @@ export default function BidDesk() {
         </div>
       )}
 
-      {syncResult && syncResult.status !== "failed" && (
+      {publicationRun && (
         <div className="success-banner" role="status">
-          <Check size={17} />
+          <Globe size={17} />
           <span>
-            Synced {syncResult.total_bids} bids to the sheet
-            {syncResult.warnings.length > 0 && ` (${syncResult.warnings.length} portal${syncResult.warnings.length === 1 ? "" : "s"} reported a warning)`}
-            {syncResult.sheet_url && (
-              <>
-                {" - "}
-                <a href={syncResult.sheet_url} target="_blank" rel="noreferrer">Open sheet <ArrowUpRight size={13} /></a>
-              </>
-            )}
+            Latest published run: {publicationRun.status.replaceAll("_", " ")}
+            {" · "}{publicationRun.bid_count} bids
+            {" · "}{publicationRun.publisher_name || publicationRun.publisher_id}
+            {" · "}{relativeTime(publicationRun.finished_at)}
+            {publicationRun.entity_checks.some((item) => item.retained_count > 0) && " · retained stale source data"}
           </span>
-          <button title="Dismiss" onClick={() => setSyncResult(null)}><X size={16} /></button>
+        </div>
+      )}
+
+      {DEPLOYED_MODE && !publicationRun && (
+        <div className="success-banner" role="status">
+          <Globe size={17} />
+          <span>Online dashboard ready. Run <code>npm run scrape-and-publish -- --yes</code> from an authorized scraper computer.</span>
         </div>
       )}
 
@@ -591,12 +648,9 @@ export default function BidDesk() {
         <div className="success-banner" role="status">
           <Check size={17} />
           <span>
-            Matched {clickUpResult.matched_aggregates} Aggregates and {clickUpResult.matched_general_construction} General Construction bids
+            Matched {clickUpResult.matched} Texas construction or aggregate bids
             {" - "}created {clickUpResult.created}, skipped {clickUpResult.skipped} already in ClickUp
-            {" - "}
-            <a href={clickUpResult.aggregates_list_url} target="_blank" rel="noreferrer">Aggregates <ArrowUpRight size={13} /></a>
-            {" / "}
-            <a href={clickUpResult.general_construction_list_url} target="_blank" rel="noreferrer">General Construction <ArrowUpRight size={13} /></a>
+            {clickUpResult.list_url && <>{" - "}<a href={clickUpResult.list_url} target="_blank" rel="noreferrer">Open Prospects <ArrowUpRight size={13} /></a></>}
           </span>
           <button title="Dismiss" onClick={() => setClickUpResult(null)}><X size={16} /></button>
         </div>
@@ -605,7 +659,7 @@ export default function BidDesk() {
       <div className="workspace">
         <section className="operations-pane">
           <div className="metric-band">
-            <div><span>Current opportunities</span><strong>{bids.length}</strong></div>
+            <div><span>Current opportunities</span><strong>{filtered.length}</strong></div>
             <div><span>High fit</span><strong>{highFit}</strong></div>
             <div><span>Due in 14 days</span><strong>{dueSoon}</strong></div>
             <div><span>Pending approval</span><strong>{pending}</strong></div>
@@ -621,7 +675,7 @@ export default function BidDesk() {
                 <div className="filter-control">
                   <Filter size={16} />
                   <select value={platform} onChange={(event) => setPlatform(event.target.value)} aria-label="Filter by portal">
-                    {PLATFORMS.map((item) => <option key={item}>{item}</option>)}
+                    {platforms.map((item) => <option key={item}>{item}</option>)}
                   </select>
                 </div>
                 <div className="filter-control">
@@ -705,6 +759,8 @@ export default function BidDesk() {
                 {proposals.length === 0 && <div className="empty-state"><Check size={24} /><strong>Approval queue is clear</strong></div>}
               </div>
             </section>
+          ) : view === "operations" ? (
+            <OperationsView status={operationsStatus} loading={loadingOperations} onRefresh={loadOperationsStatus} />
           ) : (
             <SiteMonitorView monitor={siteMonitor} loading={loadingSites} onRefresh={loadSiteMonitor} />
           )}
@@ -817,6 +873,94 @@ function ProfileDialog({ dialogRef, profile, onSaved }: { dialogRef: React.RefOb
         <div className="modal-footer"><button type="button" className="secondary-button" onClick={() => dialogRef.current?.close()}>Cancel</button><button className="primary-button" disabled={saving}>{saving && <LoaderCircle className="spin" size={16} />} Save new version</button></div>
       </form>
     </dialog>
+  );
+}
+
+function OperationsView({ status, loading, onRefresh }: { status: OperationsStatus | null; loading: boolean; onRefresh: () => void }) {
+  if (loading && !status) {
+    return <section className="operations-overview"><div className="loading-state"><LoaderCircle className="spin" size={20} /> Loading operations status</div></section>;
+  }
+  if (!status?.has_data) {
+    return (
+      <section className="operations-overview">
+        <div className="empty-state"><ClipboardCheck size={24} /><strong>No completed operations run yet</strong><span>Run the daily scraper workflow to populate this view.</span></div>
+      </section>
+    );
+  }
+
+  const coverage = status.coverage;
+  const categories = status.listings.categories;
+  const dispositionLabels: Record<string, string> = {
+    "direct-profile": "Direct profiles",
+    "batch-owned": "Batch-owned",
+    manual: "Manual monitoring",
+    blocked: "Blocked",
+    unresolved: "Unresolved",
+  };
+  const hasWarnings = status.runtime.failed > 0 || status.pipeline_errors.length > 0;
+
+  return (
+    <section className="operations-overview">
+      <div className="section-heading">
+        <div><span className="eyebrow">Daily reconciliation</span><h1>Operations overview</h1></div>
+        <div className="operations-freshness">
+          <span><Clock size={14} /> Last run {relativeTime(status.generated_at)}</span>
+          <button className="secondary-button" onClick={onRefresh} disabled={loading}>{loading ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />} Refresh</button>
+        </div>
+      </div>
+
+      <div className={`operations-run-status ${hasWarnings ? "warning" : "ok"}`}>
+        {hasWarnings ? <TriangleAlert size={17} /> : <Check size={17} />}
+        <span><strong>{status.status}</strong> — {status.failure_count} profiles need attention; {status.pipeline_errors.length} pipeline errors.</span>
+      </div>
+
+      <div className="operations-metrics">
+        <div><span>Ready coverage</span><strong>{coverage.percent ?? 0}%</strong><small>{coverage.ready ?? 0} of {coverage.total ?? 0} target entities</small></div>
+        <div><span>Audit pass rate</span><strong>{status.runtime.audit_pass_rate}%</strong><small>{status.runtime.passed} of {status.runtime.total} profiles passed</small></div>
+        <div><span>Listings captured</span><strong>{status.listings.captured}</strong><small>latest consolidated feed</small></div>
+        <div><span>Onboarding gaps</span><strong>{status.onboarding_gap_count}</strong><small>targets still needing ownership</small></div>
+      </div>
+
+      <div className="operations-grid">
+        <article className="operations-card ownership-card">
+          <div className="operations-card-heading"><div><span className="eyebrow">Target ownership</span><h2>Coverage by disposition</h2></div><a href={status.registry_url} target="_blank" rel="noreferrer">Open registry <ArrowUpRight size={13} /></a></div>
+          <div className="coverage-track" role="progressbar" aria-label="Ready entity profile coverage" aria-valuemin={0} aria-valuemax={100} aria-valuenow={coverage.percent ?? 0}><i style={{ width: `${coverage.percent ?? 0}%` }} /></div>
+          <dl className="operations-list">
+            {Object.entries(dispositionLabels).map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{status.dispositions[key] ?? 0}</dd></div>)}
+          </dl>
+          <div className="tab-coverage">{status.coverage_by_tab.map((tab) => <span key={tab.tab}><b>{tab.tab}</b> {tab.ready}/{tab.total} ready ({tab.percent}%)</span>)}</div>
+        </article>
+
+        <article className="operations-card">
+          <div className="operations-card-heading"><div><span className="eyebrow">Execution</span><h2>Run outcomes</h2></div></div>
+          <dl className="operations-list outcome-list">
+            <div><dt>Passed profiles</dt><dd className="positive">{status.runtime.passed}</dd></div>
+            <div><dt>Failed / blocked</dt><dd className={status.runtime.failed ? "negative" : "positive"}>{status.runtime.failed}</dd></div>
+            <div><dt>Verified empty</dt><dd>{status.runtime.verified_empty}</dd></div>
+            <div><dt>Pipeline errors</dt><dd className={status.pipeline_errors.length ? "negative" : "positive"}>{status.pipeline_errors.length}</dd></div>
+          </dl>
+        </article>
+
+        <article className="operations-card">
+          <div className="operations-card-heading"><div><span className="eyebrow">Classification</span><h2>Listing mix</h2></div></div>
+          <dl className="operations-list compact-grid">
+            <div><dt>Aggregates</dt><dd>{categories.aggregate ?? 0}</dd></div>
+            <div><dt>Construction</dt><dd>{categories.construction ?? 0}</dd></div>
+            <div><dt>Both</dt><dd>{categories.both ?? 0}</dd></div>
+            <div><dt>Neither</dt><dd>{categories.neither ?? 0}</dd></div>
+          </dl>
+        </article>
+
+        <article className="operations-card">
+          <div className="operations-card-heading"><div><span className="eyebrow">Consolidation</span><h2>Source integrity</h2></div></div>
+          <dl className="operations-list">
+            <div><dt>Consolidated records</dt><dd>{status.consolidation.records}</dd></div>
+            <div><dt>Missing source links</dt><dd className={status.consolidation.records_without_source_links ? "negative" : "positive"}>{status.consolidation.records_without_source_links}</dd></div>
+            <div><dt>Multi-source records</dt><dd>{status.consolidation.records_with_multiple_source_links}</dd></div>
+          </dl>
+        </article>
+      </div>
+    </section>
   );
 }
 
