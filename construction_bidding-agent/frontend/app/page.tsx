@@ -465,13 +465,13 @@ export default function BidDesk() {
   }
 
   async function cleanupExpiredBids() {
-    if (!window.confirm("Archive all overdue tasks in ClickUp Prospects and remove expired bids from the current dashboard?")) return;
+    if (!window.confirm("Archive overdue and duplicate tasks from Bid Opportunities → Prospects, then remove expired bids from the current dashboard? No other ClickUp space or list will be changed.")) return;
     setCleaningUp(true);
     setError("");
     try {
       const result = await api<{ deleted: number; clickup_archived: number }>("/api/bids/cleanup-expired", { method: "POST" });
-      appendLog("Clean up expired", [
-        `Archived ${result.clickup_archived} overdue ClickUp task${result.clickup_archived === 1 ? "" : "s"}.`,
+      appendLog("Clean up expired & duplicates", [
+        `Archived ${result.clickup_archived} overdue or duplicate ClickUp task${result.clickup_archived === 1 ? "" : "s"}.`,
         `Deleted ${result.deleted} expired dashboard bid${result.deleted === 1 ? "" : "s"}.`,
       ]);
       await load();
@@ -601,10 +601,10 @@ export default function BidDesk() {
             className="secondary-button"
             onClick={cleanupExpiredBids}
             disabled={cleaningUp}
-            title="Archive overdue tasks from ClickUp Prospects and remove expired bids from the current dashboard"
+            title="Archive overdue and duplicate tasks only from Bid Opportunities → Prospects"
           >
             {cleaningUp ? <LoaderCircle className="spin" size={17} /> : <Trash2 size={17} />}
-            {cleaningUp ? "Cleaning up" : "Clean up expired"}
+            {cleaningUp ? "Cleaning up" : "Clean up expired & duplicates"}
           </button>
           <button
             className="icon-button"

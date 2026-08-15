@@ -11,9 +11,9 @@ import psycopg
 import requests
 
 from app.bid_models import BidInput
+from app.clickup_dedupe import CLEANUP_LIST_IDS, PROSPECTS_LIST_ID, duplicate_task_ids
 
 CLICKUP_API_BASE = "https://api.clickup.com/api/v2"
-PROSPECTS_LIST_ID = "901114103788"
 DEFAULT_WORKSPACE_ID = "9011646920"
 
 GENERAL_KEYWORDS = [
@@ -251,7 +251,13 @@ class ClickUpClient:
             raise OnlineClickUpError(f"ClickUp {operation} returned an invalid response.")
         return payload
 
-    def list_tasks(self, *, include_closed: bool = True, expired_before_ms: int | None = None) -> list[dict[str, Any]]:
+    def list_tasks(
+        self,
+        *,
+        include_closed: bool = True,
+        expired_before_ms: int | None = None,
+        list_id: str = PROSPECTS_LIST_ID,
+    ) -> list[dict[str, Any]]:
         tasks: list[dict[str, Any]] = []
         page = 0
         while True:
@@ -264,7 +270,7 @@ class ClickUpClient:
                 params["due_date_lt"] = str(expired_before_ms)
                 params["order_by"] = "due_date"
             response = self.session.get(
-                f"{CLICKUP_API_BASE}/list/{PROSPECTS_LIST_ID}/task",
+                f"{CLICKUP_API_BASE}/list/{list_id}/task",
                 params=params,
                 timeout=self.timeout,
             )
@@ -378,11 +384,24 @@ def sync_clickup_from_supabase(reader: Any, client: ClickUpClient, *, dry_run: b
 
 def cleanup_expired_online(database_url: str, client: ClickUpClient, *, dry_run: bool = False) -> dict[str, int]:
     cutoff = datetime.combine(date.today(), time.min, tzinfo=UTC)
-    tasks = client.list_tasks(include_closed=False, expired_before_ms=int(cutoff.timestamp() * 1000))
+    cutoff_ms = int(cutoff.timestamp() * 1000)
+    tasks = [
+        task
+        for list_id in CLEANUP_LIST_IDS
+        for task in client.list_tasks(include_closed=False, list_id=list_id)
+    ]
+    task_ids = duplicate_task_ids(tasks)
+    task_ids.update(
+        str(task["id"])
+        for task in tasks
+        if task.get("id")
+        and str(task.get("due_date") or "").isdigit()
+        and int(task["due_date"]) < cutoff_ms
+    )
     archived = 0
     for task in tasks:
         task_id = str(task.get("id") or "").strip()
-        if not task_id:
+        if not task_id or task_id not in task_ids:
             continue
         if not dry_run:
             client.archive_task(task_id)

@@ -8,9 +8,11 @@ from typing import Any
 import aiohttp
 import certifi
 
+from app.clickup_dedupe import CLEANUP_LIST_IDS, PROSPECTS_LIST_ID, duplicate_task_ids
+
 
 CLICKUP_API_BASE = "https://api.clickup.com/api/v2"
-PROSPECTS_LIST_ID = "901114103788"
+_duplicate_task_ids = duplicate_task_ids
 
 
 class ClickUpCleanupError(RuntimeError):
@@ -38,11 +40,11 @@ async def _response_json(response: aiohttp.ClientResponse, operation: str) -> di
 
 
 async def cleanup_expired_clickup_tasks() -> int:
-    """Archive open Prospects tasks whose due date is before today.
+    """Archive expired and duplicate tasks in Bid Opportunities Prospects.
 
     Archiving removes tasks from the active ClickUp board without permanently
-    deleting their history. Tasks without a due date and already closed or
-    archived tasks are not changed.
+    deleting their history. Duplicate tasks do not need a due date; already
+    closed or archived tasks are not changed.
     """
     token = os.getenv("CLICKUP_API_TOKEN", "").strip()
     if not token:
@@ -58,31 +60,40 @@ async def cleanup_expired_clickup_tasks() -> int:
         timeout=timeout,
         connector=connector,
     ) as session:
-        page = 0
-        while True:
-            params = {
-                "archived": "false",
-                "include_closed": "false",
-                "due_date_lt": str(_expired_cutoff_ms()),
-                "order_by": "due_date",
-                "page": str(page),
-            }
-            async with session.get(
-                f"{CLICKUP_API_BASE}/list/{PROSPECTS_LIST_ID}/task", params=params
-            ) as response:
-                payload = await _response_json(response, "task lookup")
-            page_tasks = payload.get("tasks", [])
-            if not isinstance(page_tasks, list):
-                raise ClickUpCleanupError("ClickUp task lookup returned an invalid task list.")
-            tasks.extend(task for task in page_tasks if isinstance(task, dict))
-            if len(page_tasks) < 100:
-                break
-            page += 1
+        for list_id in CLEANUP_LIST_IDS:
+            page = 0
+            while True:
+                params = {
+                    "archived": "false",
+                    "include_closed": "false",
+                    "page": str(page),
+                }
+                async with session.get(
+                    f"{CLICKUP_API_BASE}/list/{list_id}/task", params=params
+                ) as response:
+                    payload = await _response_json(response, "task lookup")
+                page_tasks = payload.get("tasks", [])
+                if not isinstance(page_tasks, list):
+                    raise ClickUpCleanupError("ClickUp task lookup returned an invalid task list.")
+                tasks.extend(task for task in page_tasks if isinstance(task, dict))
+                if len(page_tasks) < 100:
+                    break
+                page += 1
+
+        cutoff = _expired_cutoff_ms()
+        task_ids = _duplicate_task_ids(tasks)
+        task_ids.update(
+            str(task["id"])
+            for task in tasks
+            if task.get("id")
+            and str(task.get("due_date") or "").isdigit()
+            and int(task["due_date"]) < cutoff
+        )
 
         archived = 0
         for task in tasks:
             task_id = str(task.get("id") or "").strip()
-            if not task_id:
+            if not task_id or task_id not in task_ids:
                 continue
             async with session.put(
                 f"{CLICKUP_API_BASE}/task/{task_id}", json={"archived": True}

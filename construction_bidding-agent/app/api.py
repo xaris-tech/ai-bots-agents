@@ -85,7 +85,7 @@ def create_bid_router(
     async def cleanup_expired_bids(
         repository: Annotated[BidRepository, Depends(get_repository)],
     ) -> CleanupSummary:
-        """Archive expired ClickUp prospects, then remove their local rows."""
+        """Archive expired or duplicate ClickUp bid tasks, then remove expired local rows."""
         try:
             clickup_archived = await cleanup_expired_clickup_tasks()
         except ClickUpCleanupError as error:
